@@ -1,6 +1,9 @@
 package main.java.Card;
 
+import main.java.Exception.GameException;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 
 
@@ -11,15 +14,21 @@ public class Deck {
 
     private ArrayList<Card> pile;
     private ArrayList<Card> pot;
+    private String[] suits;
 
 
     /**
      * Creates a new instance of Deck.
      */
-    public Deck()
+    public Deck(String[] suits) throws GameException
     {
-        pot = new ArrayList<>();
-        pile = new ArrayList<>();
+        if (suits.length < 2) {
+            throw new GameException("You need a minimum of 2 suits");
+        }
+        this.suits = suits;
+        this.pot = new ArrayList<>();
+        this.pile = new ArrayList<>();
+
     }
 
 
@@ -82,8 +91,26 @@ public class Deck {
             System.out.println(aux.getNumber()+" "+aux.getSuit());
         }
     }
-    
-    
+
+    /**
+     * Generate cards.
+     */
+    public void generateCards() {
+        Arrays.asList(this.suits).forEach(suit -> {
+            for (int x = 1; x < 13; x++) {
+                this.addCard(new Card(x, suit));
+            }
+        });
+    }
+
+    public String[] getSuits() {
+        return suits;
+    }
+
+
+    /**
+     * Refills the pot.
+     */
     private synchronized void refillPot()
     {
         pot = (ArrayList<Card>) pile.clone();

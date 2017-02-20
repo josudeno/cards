@@ -10,7 +10,7 @@ public class Player extends Thread
 {
     Deck deck;
     
-    Card ult = null;
+    Card lastCard = null;
     String name;
 
     /**
@@ -29,35 +29,36 @@ public class Player extends Thread
     public void run ()
     {
         Card sacada;
-        while (ult == null) {
+        while (lastCard == null) {
             
             try {
-                Thread.sleep (7);
-                sacada = deck.removeCard ();
-                if (sacada.getNumber () ==1)
-                    ult=sacada;
-                else
+                Thread.sleep(7);
+                sacada = deck.removeCard();
+                if (sacada.getNumber() == 1) {
+                    lastCard = sacada;
+                } else {
                     deck.addCard(sacada);
+                }
 
             } catch (InterruptedException ex) {
                 ex.printStackTrace ();
             }
         }
 
-        while (ult.getNumber() < 12) {
+        while (lastCard.getNumber() < 12) {
             try {
                 Thread.sleep (2);
                 sacada = deck.removeCard ();
-                int resta = sacada.getNumber() - ult.getNumber();
+                int resta = sacada.getNumber() - lastCard.getNumber();
 
-                if ( (resta==1) && (sacada.getSuit() ==ult.getSuit())) {
-                    ult = sacada;
+                if ( (resta==1) && (sacada.getSuit() == lastCard.getSuit())) {
+                    lastCard = sacada;
                 } else {
                     deck.addCard(sacada);
                 }
 
-                System.out.println("SACADA "+this.name +" "+sacada.getNumber()+" "+sacada.getSuit());
-                System.out.println("ULTIMA "+this.name +" "+ult.getNumber()+" "+ult.getSuit());
+                System.out.println(this.name +" took "+sacada.getNumber()+" of "+sacada.getSuit());
+                System.out.println(this.name +" last card was "+ lastCard.getNumber()+" of "+ lastCard.getSuit());
                 
             } catch (InterruptedException ex) {
                 ex.printStackTrace ();
