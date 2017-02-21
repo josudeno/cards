@@ -1,4 +1,4 @@
-package main.java.Exception;
+package Exception;
 
 /**
  * Created by josh on 20/02/17.

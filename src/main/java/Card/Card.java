@@ -1,4 +1,4 @@
-package main.java.Card;
+package Card;
 
 /**
  * Class Card

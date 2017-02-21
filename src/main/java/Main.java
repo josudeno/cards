@@ -1,8 +1,6 @@
-package main.java;
-
-import main.java.Card.Deck;
-import main.java.Exception.GameException;
-import main.java.Player.Factory;
+import Card.Deck;
+import Exception.GameException;
+import Player.Factory;
 
 /**
  * Main class.

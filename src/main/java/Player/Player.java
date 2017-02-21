@@ -1,7 +1,7 @@
-package main.java.Player;
+package Player;
 
-import main.java.Card.Card;
-import main.java.Card.Deck;
+import Card.Deck;
+import Card.Card;
 
 /**
  * Class player, represents the person playing the game.

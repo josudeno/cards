@@ -1,8 +1,6 @@
-package test.java;
+package Card;
+import Exception.GameException;
 
-import main.java.Card.Card;
-import main.java.Card.Deck;
-import main.java.Exception.GameException;
 import org.junit.Test;
 import static org.junit.Assert.*;
 

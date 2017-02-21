@@ -1,9 +1,6 @@
-package main.java;
-
-import main.java.Card.Deck;
-import main.java.Exception.GameException;
-import main.java.Player.Factory;
-import main.java.Player.Player;
+import Card.Deck;
+import Player.Player;
+import Exception.GameException;
 
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;

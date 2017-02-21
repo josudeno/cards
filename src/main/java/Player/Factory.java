@@ -1,6 +1,7 @@
-package main.java.Player;
+package Player;
 
-import main.java.Card.Deck;
+
+import Card.Deck;
 
 import java.util.ArrayList;
 import java.util.Arrays;

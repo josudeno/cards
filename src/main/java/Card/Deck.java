@@ -1,6 +1,6 @@
-package main.java.Card;
+package Card;
 
-import main.java.Exception.GameException;
+import Exception.GameException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
