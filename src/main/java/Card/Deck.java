@@ -28,7 +28,7 @@ public class Deck {
         this.suits = suits;
         this.pot = new ArrayList<>();
         this.pile = new ArrayList<>();
-
+        this.generateCards();
     }
 
 
@@ -40,13 +40,13 @@ public class Deck {
      */
     public synchronized Card removeCard() throws InterruptedException
     {
-        Card Card = pot.remove(pot.size() -1);
+        Card card = pot.remove(pot.size() -1);
 
         if (pot.size() == 0) {
             this.refillPot();
          }
 
-        return Card;
+        return card;
     }
 
     /**
@@ -76,7 +76,6 @@ public class Deck {
             pile.set(positionOne, pile.get(i));
             pile.set(i, auxiliaryCard);
         }
-        refillPot();
     }
 
 
@@ -95,18 +94,26 @@ public class Deck {
     /**
      * Generate cards.
      */
-    public void generateCards() {
+    public ArrayList<Card> generateCards() {
+        if (this.pot.size() > 0) {
+            this.pot.clear();
+        }
         Arrays.asList(this.suits).forEach(suit -> {
             for (int x = 1; x < 13; x++) {
-                this.addCard(new Card(x, suit));
+                this.pot.add(new Card(x, suit));
             }
         });
+        return this.pot;
     }
 
     public String[] getSuits() {
         return suits;
     }
 
+
+    public ArrayList<Card> getPot() {
+        return pot;
+    }
 
     /**
      * Refills the pot.

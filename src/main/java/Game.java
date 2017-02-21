@@ -2,9 +2,13 @@ package main.java;
 
 import main.java.Card.Deck;
 import main.java.Exception.GameException;
+import main.java.Player.Factory;
 import main.java.Player.Player;
 
 import java.util.ArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The actual game.
@@ -33,8 +37,18 @@ public class Game
         if (players.size() > deckOfCards.getSuits().length) {
             throw new GameException("You must have the same amount of players or less than suits in the deck of cards");
         }
-        deckOfCards.generateCards();
         deckOfCards.shuffle();
-        players.forEach(Player::run);
+        deckOfCards.shuffle();
+        deckOfCards.shuffle();
+        ExecutorService executor = Executors.newScheduledThreadPool(players.size());
+        players.forEach(executor::execute);
+        executor.shutdown();
+        while (!executor.isTerminated()) {
+            try {
+                executor.awaitTermination(10, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
