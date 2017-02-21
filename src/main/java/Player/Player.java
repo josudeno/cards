@@ -6,12 +6,11 @@ import main.java.Card.Deck;
 /**
  * Class player, represents the person playing the game.
  */
-public class Player extends Thread
+public class Player implements Runnable
 {
-    Deck deck;
-    
-    Card ult = null;
-    String name;
+    private Deck deck;
+    private Card lastCard;
+    private String name;
 
     /**
      * Creates deck new instance of Player
@@ -22,42 +21,43 @@ public class Player extends Thread
     public Player(Deck m, String name)
     {
         this.name = name;
-        this.deck =m;
+        this.deck = m;
         
     }
     
     public void run ()
     {
-        Card sacada;
-        while (ult == null) {
+        Card removed;
+        while (lastCard == null) {
             
             try {
-                Thread.sleep (7);
-                sacada = deck.removeCard ();
-                if (sacada.getNumber () ==1)
-                    ult=sacada;
-                else
-                    deck.addCard(sacada);
+                Thread.sleep(50);
+                removed = deck.removeCard();
+                if (removed.getNumber() == 1) {
+                    lastCard = removed;
+                } else {
+                    deck.addCard(removed);
+                }
 
             } catch (InterruptedException ex) {
                 ex.printStackTrace ();
             }
         }
 
-        while (ult.getNumber() < 12) {
+        while (lastCard.getNumber() < 12) {
             try {
-                Thread.sleep (2);
-                sacada = deck.removeCard ();
-                int resta = sacada.getNumber() - ult.getNumber();
+                Thread.sleep(50);
+                removed = deck.removeCard ();
+                int resta = removed.getNumber() - lastCard.getNumber();
 
-                if ( (resta==1) && (sacada.getSuit() ==ult.getSuit())) {
-                    ult = sacada;
+                if ( (resta == 1) && (removed.getSuit().equals(lastCard.getSuit())) ) {
+                    lastCard = removed;
                 } else {
-                    deck.addCard(sacada);
+                    deck.addCard(removed);
                 }
 
-                System.out.println("SACADA "+this.name +" "+sacada.getNumber()+" "+sacada.getSuit());
-                System.out.println("ULTIMA "+this.name +" "+ult.getNumber()+" "+ult.getSuit());
+                System.out.println(this.name +" took "+removed.getNumber()+" of "+removed.getSuit());
+                System.out.println(this.name +" last card was "+ lastCard.getNumber()+" of "+ lastCard.getSuit());
                 
             } catch (InterruptedException ex) {
                 ex.printStackTrace ();
@@ -65,7 +65,7 @@ public class Player extends Thread
             
         }
         
-        System.out.println (name);
+        System.out.println("************** "+this.name+" has finished playing the game ************");
         
     }
     
