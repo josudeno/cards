@@ -60,36 +60,24 @@ public class Deck {
     }
 
     /**
-     * Shuffles the deck of cards by replacing giving the cards a different position in the pile.
+     * Shuffles the deck of cards by replacing giving the cards a different position in the pot.
      */
     public void shuffle()
     {
-        Random random = new Random(pile.size() -1);
+        Random random = new Random(pot.size() -1);
         int positionOne;
         Card auxiliaryCard;
 
-        for (int i = 0; i < pile.size(); i++) {
+        for (int i = 0; i < pot.size(); i++) {
 
-           positionOne = random.nextInt(pile.size() -1);
+           positionOne = random.nextInt(pot.size() -1);
          
-            auxiliaryCard = pile.get(positionOne);
-            pile.set(positionOne, pile.get(i));
-            pile.set(i, auxiliaryCard);
+            auxiliaryCard = pot.get(positionOne);
+            pot.set(positionOne, pot.get(i));
+            pot.set(i, auxiliaryCard);
         }
     }
 
-
-    /**
-     * Shows the cards.
-     */
-    public void Show()
-    {
-        Card aux;
-        for (int i=0; i<48; i++) {
-            aux = pile.get(i);
-            System.out.println(aux.getNumber()+" "+aux.getSuit());
-        }
-    }
 
     /**
      * Generate cards.

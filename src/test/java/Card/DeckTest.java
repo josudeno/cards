@@ -1,10 +1,11 @@
 package Card;
+
 import Exception.GameException;
-
 import org.junit.Test;
-import static org.junit.Assert.*;
-
 import java.util.ArrayList;
+import static junit.framework.Assert.assertSame;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 /**
  * Player test
@@ -38,11 +39,12 @@ public class DeckTest
 
     @Test
     public void testShuffle() throws GameException {
+        Card firstCard = this.getDummyDeck().getPot().get(0);
         Card fifthCard = this.getDummyDeck().getPot().get(4);
         Card tenthCard = this.getDummyDeck().getPot().get(9);
-        Card firstCard = this.getDummyDeck().getPot().get(0);
 
         this.getDummyDeck().shuffle();
+
         assertNotEquals(firstCard, this.getDummyDeck().getPot().get(0));
         assertNotEquals(fifthCard, this.getDummyDeck().getPot().get(4));
         assertNotEquals(tenthCard, this.getDummyDeck().getPot().get(9));

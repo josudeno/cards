@@ -12,8 +12,8 @@ public class Card
     /**
      * Creates a new instance of card.
      *
-     * @param number
-     * @param suit
+     * @param number  The card number.
+     * @param suit    The card suit.
      */
     public Card(int number, String suit)
     {
@@ -22,16 +22,17 @@ public class Card
     }
 
 
+    /**
+     * Returns the number
+     */
     public int getNumber()
     {
-    return number;
+        return number;
     }
 
 
     /**
      * Get suit.
-     *
-     * @return
      */
     public String getSuit()
     {
