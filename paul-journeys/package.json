@@ -2,7 +2,7 @@
   "name": "paul-journeys",
   "version": "1.0.0",
   "private": true,
-  "description": "To the Ends of the Earth — a third-person browser game following the journeys of the apostle Paul (Acts 9–28).",
+  "description": "To the Ends of the Earth / Hasta los confines de la tierra — a third-person browser game following the journeys of the apostle Paul (Acts 9–28), in English and Spanish.",
   "type": "module",
   "scripts": {
     "start": "npx http-server -c-1 -p 8080 .",

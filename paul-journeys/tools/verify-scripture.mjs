@@ -21,7 +21,7 @@ function passage(ref) {
   return norm(out.join(' '));
 }
 const found = [];
-for (const f of readdirSync(join(here, '../js')).filter(f => /^(chapters|game|tasks)/.test(f)).concat('../index.html')) {
+for (const f of readdirSync(join(here, '../js')).filter(f => /^(chapters|game|tasks|i18n\.js)/.test(f)).concat('../index.html')) {
   const src = readFileSync(join(here, '../js', f), 'utf8'); let m;
   const S = `'((?:[^'\\\\]|\\\\.)*)'`;
   for (const re of [new RegExp(`\\[\\s*${S},\\s*${S},\\s*${S}\\s*\\]`, 'g'), new RegExp(`G\\.bark\\(${S},\\s*${S},\\s*${S}`, 'g')]) while ((m = re.exec(src))) found.push({ f, text: m[2], ref: m[3] });
@@ -39,4 +39,22 @@ for (const { f, text, ref } of quotes) {
   if (!ok) { bad++; console.log(`✗ ${f} — ${ref}\n    game: ${text}${why}`); }
 }
 console.log(`${quotes.length - bad}/${quotes.length} Scripture quotations match the World English Bible verbatim.`);
-process.exit(bad ? 1 : 0);
+
+// ---- Spanish: every excerpt must be a verbatim part of the Reina-Valera (1909) verse(s) it cites,
+// and every English quotation that cites only part of a verse must have an excerpt.
+const { RV } = await import('../js/i18n/es-scripture.js');
+const { QUOTES } = await import('../js/i18n/es-quotes.js');
+const low = (x) => norm(x).toLowerCase();
+const rvText = (ref) => { const m = ref.match(/^((?:\d )?[A-Za-z]+) (\d+):(\d+)(?:-(\d+))?$/); const o = []; for (let v = +m[3]; v <= +(m[4] || m[3]); v++) { const t = RV[`${m[1]} ${m[2]}:${v}`]; if (t === undefined) throw new Error('verse missing in es-scripture.js: ' + ref); o.push(t); } return low(o.join(' ')); };
+let esBad = 0;
+for (const [key, es] of Object.entries(QUOTES)) {
+  const ref = key.slice(0, key.indexOf('|'));
+  try { const full = rvText(ref); if (es !== '@full') for (const seg of es.split(' … ')) if (!full.includes(low(seg))) { esBad++; console.log(`✗ ES ${ref}: not in Reina-Valera 1909: ${seg}`); } } catch (e) { esBad++; console.log('✗ ES', key, e.message); }
+}
+let esMissing = 0;
+for (const { ref, text } of quotes) {
+  const k = ref + '|' + text.replace(/^“|”$/g, '').trim(); if (QUOTES[k] !== undefined) continue;
+  try { const en = passage(ref); if (en !== norm(text.replace(/^“|”$/g, ''))) { esMissing++; console.log(`✗ ES excerpt missing for partial quotation: ${ref} — ${text.slice(0, 60)}`); } } catch (_) { /* reported above */ }
+}
+console.log(`${Object.keys(QUOTES).length - esBad}/${Object.keys(QUOTES).length} Spanish excerpts match the Reina-Valera (1909); ${esMissing} partial quotations lack a Spanish excerpt.`);
+process.exit(bad || esBad || esMissing ? 1 : 0);

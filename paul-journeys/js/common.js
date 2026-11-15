@@ -4,7 +4,8 @@ import { personLook } from './characters.js';
 
 export const dist = (a, b) => Math.hypot((a.x ?? a[0]) - (b.x ?? b[0]), (a.z ?? a[1]) - (b.z ?? b[1]));
 export const look = (seed, kind = 'man', over = {}) => Object.assign(personLook(Rand(seed), kind), over);
-export const q = (text, ref) => `<q>${text}</q> <em>${ref}</em>`;
+// a Scripture quotation inside prose; rendered (and translated) when the card is shown — see i18n.tBody
+export const q = (text, ref) => `\u27E6${ref}\u241F${text}\u27E7`;
 
 // An NPC leads the player along waypoints, waiting whenever the player falls behind.
 export async function lead(G, npc, pts, speed = 2, leash = 7) {

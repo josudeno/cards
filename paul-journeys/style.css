@@ -52,7 +52,7 @@ h1 { font-weight: 400; font-size: clamp(30px, 5.4vw, 52px); margin: 10px 0 2px; 
 h2 { font-weight: 400; font-style: italic; font-size: clamp(17px, 2.4vw, 23px); margin: 0 0 16px; color: var(--gold); }
 h3 { font-weight: 400; font-size: clamp(24px, 3.6vw, 34px); margin: 8px 0 12px; }
 .verse { font-style: italic; font-size: 17px; line-height: 1.5; color: #e6dcc4; margin: 0 auto 18px; max-width: 520px; }
-.verse span, #cardRef, #mapRef { display: block; font-style: normal; color: var(--gold); font-size: 13px; letter-spacing: .12em; margin-top: 8px; }
+.verse #verseRef, #cardRef, #mapRef { display: block; font-style: normal; color: var(--gold); font-size: 13px; letter-spacing: .12em; margin-top: 8px; }
 #cardBody { font-size: 18.5px; line-height: 1.55; text-align: left; white-space: pre-line; max-height: 52vh; overflow: auto; }
 #cardBody q { quotes: '“' '”'; font-style: italic; color: #f0e4c4; }
 #cardBody em { color: var(--gold); font-style: normal; font-size: 13px; letter-spacing: .08em; white-space: nowrap; }
@@ -97,3 +97,7 @@ select { background: #1c160e; color: var(--ink); border: 1px solid rgba(227, 194
 #jBody .mantles { display: flex; gap: 8px; flex-wrap: wrap; } #jBody .mantles button { min-width: 0; padding: 8px 12px; font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
 #jBody .mantles button i { width: 16px; height: 16px; border-radius: 50%; display: inline-block; border: 1px solid rgba(255, 255, 255, .4); } #jBody .mantles button.sel { border-color: var(--gold); background: rgba(227, 194, 122, .18); } #jBody .mantles button[disabled] { opacity: .4; }
 @media (max-width: 700px) { #tasks { display: none; } #objective { font-size: 16px; } #dlgText { font-size: 17px; } #minimap { width: 120px; height: 120px; } }
+
+.lang { display: inline-flex; border: 1px solid rgba(227, 194, 122, .55); border-radius: 18px; overflow: hidden; margin: 0 0 14px; }
+.screen .lang button { min-width: 0; border: 0; border-radius: 0; padding: 6px 18px; font-size: 14px; background: transparent; }
+.screen .lang button.on { background: var(--gold); color: #1c150b; }

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>To the Ends of the Earth — The Journeys of Paul</title>
-<meta name="description" content="A third-person 3D journey through the Acts of the Apostles: play the travels of Paul from Damascus to Malta, with every spoken line quoted from Scripture.">
+<meta name="description" content="English / Español — a third-person 3D journey through the Acts of the Apostles: play the travels of Paul from Damascus to Malta, with every spoken line quoted from Scripture.">
 <meta name="theme-color" content="#0b0906">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2712%27 fill=%27%231c150b%27/%3E%3Cpath d=%27M14 46 Q32 8 50 46%27 fill=%27none%27 stroke=%27%23e3c27a%27 stroke-width=%274%27/%3E%3Crect x=%2730%27 y=%2718%27 width=%274%27 height=%2730%27 fill=%27%23e3c27a%27/%3E%3Crect x=%2714%27 y=%2746%27 width=%2736%27 height=%274%27 fill=%27%23e3c27a%27/%3E%3C/svg%3E">
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/addons/" } }</script>
@@ -21,7 +21,7 @@
     <div id="chapterTag"></div>
     <div id="objective"></div>
   </div>
-  <div id="topright"><span id="rank"></span><span id="letters"></span><button id="journalBtn" aria-label="Journal">✎</button><button id="pauseBtn" aria-label="Pause">II</button></div>
+  <div id="topright"><span id="rank"></span><span id="letters"></span><button id="journalBtn" aria-label="Journal" data-i18n-aria>✎</button><button id="pauseBtn" aria-label="Pause" data-i18n-aria>II</button></div>
   <div id="tasks"></div>
   <div id="reward" class="hidden"></div>
   <canvas id="minimap" width="360" height="360"></canvas>
@@ -32,7 +32,7 @@
   <div id="dialog" class="hidden">
     <div id="dlgWho"></div>
     <div id="dlgText"></div>
-    <div id="dlgFoot"><span id="dlgRef"></span><span id="dlgHint">Space / tap ▸</span></div>
+    <div id="dlgFoot"><span id="dlgRef"></span><span id="dlgHint" data-i18n>Space / tap ▸</span></div>
   </div>
   <div id="toast" class="hidden"></div>
   <button id="btnE" class="touchbtn">E</button>
@@ -41,49 +41,51 @@
 
 <div id="title" class="screen">
   <div class="panel">
-    <div class="kicker">The Acts of the Apostles</div>
-    <h1>To the Ends of the Earth</h1>
-    <h2>The Journeys of Paul</h2>
-    <p class="verse">“…he is my chosen vessel to bear my name before the nations and kings, and the children of Israel.” <span>Acts 9:15</span></p>
+    <div class="lang" role="group" aria-label="Language / Idioma"><button data-lang="en" class="on">English</button><button data-lang="es">Español</button></div>
+    <div class="kicker" data-i18n>The Acts of the Apostles</div>
+    <h1 data-i18n>To the Ends of the Earth</h1>
+    <h2 data-i18n>The Journeys of Paul</h2>
+    <p class="verse"><span id="verseText">“…he is my chosen vessel to bear my name before the nations and kings, and the children of Israel…”</span> <span id="verseRef">Acts 9:15</span></p>
     <div class="buttons">
-      <button id="btnBegin" class="primary">Begin the journey</button>
-      <button id="btnChapters">Chapters</button>
-      <button id="btnJournal">Journal &amp; rewards</button>
+      <button id="btnBegin" class="primary" data-i18n>Begin the journey</button>
+      <button id="btnChapters" data-i18n>Chapters</button>
+      <button id="btnJournal" data-i18n>Journal &amp; rewards</button>
     </div>
-    <div class="row">Graphics
-      <select id="quality"><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
-      <label><input type="checkbox" id="sound" checked> Sound</label>
+    <div class="row"><span data-i18n>Graphics</span>
+      <select id="quality"><option value="high" data-i18n>High</option><option value="medium" data-i18n>Medium</option><option value="low" data-i18n>Low</option></select>
+      <label><input type="checkbox" id="sound" checked> <span data-i18n>Sound</span></label>
     </div>
-    <p class="help"><b>WASD</b> move · <b>Mouse</b> look · <b>Shift</b> run · <b>Space</b> jump / continue · <b>E</b> act / greet · <b>J</b> journal · <b>Esc</b> pause<br>Touch: left thumb moves, right thumb looks.</p>
-    <p class="fine">Every spoken line is quoted from Scripture (World English Bible, public domain) with its reference. Narration summarises the same passages. Scenery, weather and faces are an artist’s impression.</p>
+    <p class="help" data-i18n><b>WASD</b> move · <b>Mouse</b> look · <b>Shift</b> run · <b>Space</b> jump / continue · <b>E</b> act / greet · <b>J</b> journal · <b>Esc</b> pause<br>Touch: left thumb moves, right thumb looks.</p>
+    <p class="fine" data-i18n>Every spoken line is quoted from Scripture (World English Bible, public domain) with its reference. Narration summarises the same passages. Scenery, weather and faces are an artist’s impression.</p>
   </div>
 </div>
 
-<div id="chapters" class="screen hidden"><div class="panel wide"><h3>Chapters</h3><div id="chapterList"></div><div class="buttons"><button id="btnBack">Back</button></div></div></div>
+<div id="chapters" class="screen hidden"><div class="panel wide"><h3 data-i18n>Chapters</h3><div id="chapterList"></div><div class="buttons"><button id="btnBack" data-i18n>Back</button></div></div></div>
 
 <div id="mapscreen" class="screen hidden">
   <canvas id="journeyMap" width="1280" height="720"></canvas>
-  <div id="mapCaption"><div id="mapKicker"></div><div id="mapTitle"></div><div id="mapRef"></div><button id="mapGo" class="primary">Continue</button></div>
+  <div id="mapCaption"><div id="mapKicker"></div><div id="mapTitle"></div><div id="mapRef"></div><button id="mapGo" class="primary" data-i18n>Continue</button></div>
 </div>
 
 <div id="card" class="screen hidden"><div class="panel">
   <div class="kicker" id="cardKicker"></div><h3 id="cardTitle"></h3><div id="cardBody"></div><div id="cardRef"></div>
-  <div class="buttons"><button id="cardGo" class="primary">Continue</button></div>
+  <div class="buttons"><button id="cardGo" class="primary" data-i18n>Continue</button></div>
 </div></div>
 
 <div id="journal" class="screen hidden"><div class="panel wide">
-  <div class="kicker">Journal</div><h3 id="jRank"></h3>
+  <div class="kicker" data-i18n>Journal</div><h3 id="jRank"></h3>
   <div class="xpbar"><i id="jBar"></i></div><div id="jNext" class="fine"></div>
   <div id="jBody"></div>
-  <div class="buttons"><button id="jClose" class="primary">Close</button></div>
+  <div class="buttons"><button id="jClose" class="primary" data-i18n>Close</button></div>
 </div></div>
 
 <div id="pause" class="screen hidden"><div class="panel">
-  <h3>Paused</h3>
-  <div class="buttons col"><button id="btnResume" class="primary">Resume</button><button id="btnPJournal">Journal &amp; rewards</button><button id="btnRestart">Restart chapter</button><button id="btnSkip">Skip to next chapter</button><button id="btnQuit">Title screen</button></div>
+  <h3 data-i18n>Paused</h3>
+  <div class="lang" role="group" aria-label="Language / Idioma"><button data-lang="en">English</button><button data-lang="es">Español</button></div>
+  <div class="buttons col"><button id="btnResume" class="primary" data-i18n>Resume</button><button id="btnPJournal" data-i18n>Journal &amp; rewards</button><button id="btnRestart" data-i18n>Restart chapter</button><button id="btnSkip" data-i18n>Skip to next chapter</button><button id="btnQuit" data-i18n>Title screen</button></div>
 </div></div>
 
-<div id="loading" class="screen"><div class="panel"><div class="kicker">Preparing the road…</div></div></div>
+<div id="loading" class="screen"><div class="panel"><div class="kicker" data-i18n>Preparing the road…</div></div></div>
 <script type="module" src="./js/game.js"></script>
 </body>
 </html>

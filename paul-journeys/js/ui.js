@@ -1,5 +1,7 @@
 // HUD, dialogue, cards, minimap and the journey map.
+import { t, sc, tBody, tNote, refLabel, version, versionName, cityName, regionName, isEs, applyStatic } from './i18n.js';
 const $ = (id) => document.getElementById(id);
+const kickerT = (k) => k.split(' · ').map((x) => (/^Chapter [IVX]+$/.test(x) ? t('Chapter') + x.slice(7) : /\d+:\d+/.test(x) ? refLabel(x) : t(x))).join(' · ');
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
 // ---- journey map data (lon, lat) — a hand-drawn approximation of the first-century Mediterranean
@@ -15,19 +17,25 @@ export class UI {
     this.el.dialog.addEventListener('click', () => this.advance());
   }
   show(id, on = true) { this.el[id].classList.toggle('hidden', !on); }
-  setChapter(tag) { this.el.chapterTag.textContent = tag; }
-  setObjective(t) { if (this.el.objective.textContent !== (t || '')) this.el.objective.textContent = t || ''; }
-  setLetters(n, total) { this.el.letters.textContent = total ? `✉ Letters ${n}/${total}` : ''; }
-  setPrompt(label) { this.show('prompt', !!label); if (label) this.el.promptText.textContent = label; document.getElementById('btnE').style.opacity = label ? 1 : 0.35; }
+  setChapter(num, title) { this.chap = [num, title]; this.el.chapterTag.textContent = num ? `${t('Chapter')} ${num} · ${t(title)}` : ''; }
+  setObjective(text) { this.objKey = text || ''; const v = t(this.objKey); if (this.el.objective.textContent !== v) this.el.objective.textContent = v; }
+  setLetters(n, total) { this.lett = [n, total]; this.el.letters.textContent = total ? `✉ ${t('Letters')} ${n}/${total}` : ''; }
+  setPrompt(label, raw = false) { this.show('prompt', !!label); if (label) this.el.promptText.textContent = raw ? label : t(label); document.getElementById('btnE').style.opacity = label ? 1 : 0.35; }
+  // re-render everything that is currently on screen after a language change
+  relang() { applyStatic(); if (this.chap) this.setChapter(...this.chap); this.setObjective(this.objKey); if (this.lett) this.setLetters(...this.lett); this._tasks = null; if (this.dlg && this.dlg.i >= 0) { this.dlg.i--; this.dlg.rerender = true; this.next(); } }
   setTasks(html) { if (this._tasks !== html) { this._tasks = html; this.el.tasks.innerHTML = html; } }
-  reward(kind, text, note = '') { const e = this.el.reward; e.innerHTML = `<b>${esc(kind)}</b><span>${esc(text)}</span>${note ? `<small>${esc(note)}</small>` : ''}`; e.classList.remove('hidden'); e.style.animation = 'none'; void e.offsetWidth; e.style.animation = ''; }
-  toast(t) { const e = this.el.toast; e.textContent = t; e.classList.remove('hidden'); e.style.animation = 'none'; void e.offsetWidth; e.style.animation = ''; }
-  bark(who, text, ref, sec = 5) { this.el.bark.innerHTML = (who ? `<b>${esc(who)}</b>` : '') + (ref ? `“${esc(text)}”<i>${esc(ref)}</i>` : `<span style="font-style:italic">${esc(text)}</span>`); this.show('bark'); this.barkT = sec; }
+  reward(kind, text, note = '', rawNote = false) { const e = this.el.reward; e.innerHTML = `<b>${esc(t(kind))}</b><span>${esc(t(text))}</span>${note ? `<small>${esc(rawNote ? note : tNote(note))}</small>` : ''}`; e.classList.remove('hidden'); e.style.animation = 'none'; void e.offsetWidth; e.style.animation = ''; }
+  toast(text) { const e = this.el.toast; e.textContent = t(text); e.classList.remove('hidden'); e.style.animation = 'none'; void e.offsetWidth; e.style.animation = ''; }
+  bark(who, text, ref, sec = 5) { this.el.bark.innerHTML = (who ? `<b>${esc(t(who))}</b>` : '') + (ref ? `“${esc(sc(text, ref))}”<i>${esc(refLabel(ref))}</i>` : `<span style="font-style:italic">${esc(t(text))}</span>`); this.show('bark'); this.barkT = sec; }
   // dialogue: lines are [who, text, ref]; ref present => verbatim Scripture
   say(lines) { return new Promise((res) => { this.dlg = { lines: lines.slice(), i: -1, shown: 0, res, text: '' }; this.show('dialog'); this.next(); }); }
   next() { const d = this.dlg; d.i++; if (d.i >= d.lines.length) { this.show('dialog', false); this.dlg = null; d.res(); return; }
-    const [who, text, ref] = d.lines[d.i]; d.text = ref ? `“${text}”` : text; d.shown = 0; d.cool = 0.25;
-    this.el.dlgWho.textContent = who || (ref ? '' : ''); this.el.dlgText.classList.toggle('narr', !who); this.el.dlgRef.textContent = ref ? ref + ' · WEB' : ''; this.el.dlgText.textContent = ''; }
+    const [who, text, ref] = d.lines[d.i], again = d.rerender; d.rerender = false; const shown = ref ? sc(text, ref) : t(text);
+    d.text = ref ? `“${shown}”` : shown; if (!again) { d.shown = 0; d.cool = 0.25; } else d.shown = d.text.length;
+    this.el.dlgWho.textContent = who ? t(who) : ''; this.el.dlgText.classList.toggle('narr', !who); this.el.dlgRef.textContent = ref ? refLabel(ref) + ' · ' + version() : ''; this.el.dlgText.textContent = again ? d.text : ''; }
+  probeCard(o) { kickerT(o.kicker || ''); t(o.title || ''); tBody(o.body || ''); t(o.button || ''); }
+  // autoplay never shows dialogue, but still resolves each line so missing translations get recorded
+  probe(lines) { for (const [who, text, ref] of lines) { t(who); ref ? sc(text, ref) : t(text); } }
   advance() { const d = this.dlg; if (!d || d.cool > 0) return false; if (d.shown < d.text.length) { d.shown = d.text.length; this.el.dlgText.textContent = d.text; d.cool = 0.15; } else this.next(); return true; }
   cancelDialog() { if (this.dlg) { this.dlg = null; this.show('dialog', false); } this.show('bark', false); this.setPrompt(null); }
   update(dt) {
@@ -39,7 +47,7 @@ export class UI {
   setBlind(v) { this.el.blind.style.opacity = v; this.el.game.style.filter = v > 0 ? `blur(${(v * 7).toFixed(1)}px) brightness(${(1 - v * 0.35).toFixed(2)})` : ''; }
   setCompass(angle) { this.show('compass', angle !== null); if (angle !== null) this.el.compassArrow.style.transform = `rotate(${angle}rad)`; }
   setHelm(throttle, text) { this.show('helm', throttle !== null); if (throttle !== null) { this.el.helmFill.style.width = (throttle * 100) + '%'; this.el.helmText.textContent = text; } }
-  card({ kicker = '', title = '', body = '', ref = '', button = 'Continue' }) { return new Promise((res) => { const e = this.el; e.cardKicker.textContent = kicker; e.cardTitle.textContent = title; e.cardBody.innerHTML = body; e.cardRef.textContent = ref; e.cardGo.textContent = button; this.show('card'); this.cardRes = () => { this.show('card', false); this.cardRes = null; res(); }; e.cardGo.onclick = this.cardRes; }); }
+  card({ kicker = '', title = '', body = '', extra = '', ref = '', button = 'Continue' }) { return new Promise((res) => { const e = this.el; e.cardKicker.textContent = kickerT(kicker); e.cardTitle.textContent = /\d+:\d+/.test(title) ? refLabel(title) : t(title); e.cardBody.innerHTML = tBody(body) + extra; e.cardRef.textContent = ref === 'World English Bible' ? versionName() : refLabel(ref); e.cardGo.textContent = t(button); this.show('card'); this.cardRes = () => { this.show('card', false); this.cardRes = null; res(); }; e.cardGo.onclick = this.cardRes; }); }
 
   // ---- minimap
   buildMinimap(world) {
@@ -80,13 +88,13 @@ export class UI {
         G.fillStyle = '#c9b68a'; G.strokeStyle = '#7a6844'; G.lineWidth = 2; G.lineJoin = 'round'; poly(LAND); G.fill(); G.stroke(); for (const i of ISLES) { poly(i); G.fill(); G.stroke(); }
         G.fillStyle = '#284656'; for (const s of SEAS) { poly(s); G.fill(); G.stroke(); }
         G.fillStyle = 'rgba(60,44,20,.5)'; G.font = 'italic 26px Georgia'; G.textAlign = 'center';
-        for (const [t, lon, lat] of [['ASIA', 30.2, 38.9], ['MACEDONIA', 22.6, 41.6], ['ACHAIA', 21.4, 39.2], ['ITALY', 13.4, 42.9], ['SYRIA', 37.6, 35.2], ['JUDEA', 36.6, 31.3], ['GALATIA', 33.6, 39.4], ['CILICIA', 34.2, 37.6], ['EGYPT', 30.5, 30.4], ['CYPRUS', 33.2, 34.25], ['CRETE', 24.9, 34.55]]) { const [x, y] = P([lon, lat]); G.fillText(t, x, y); }
-        G.fillStyle = 'rgba(200,220,230,.35)'; G.font = 'italic 30px Georgia'; { const [x, y] = P([19.5, 34.6]); G.fillText('The Great Sea', x, y); } };
+        for (const [tx, lon, lat] of [['ASIA', 30.2, 38.9], ['MACEDONIA', 22.6, 41.6], ['ACHAIA', 21.4, 39.2], ['ITALY', 13.4, 42.9], ['SYRIA', 37.6, 35.2], ['JUDEA', 36.6, 31.3], ['GALATIA', 33.6, 39.4], ['CILICIA', 34.2, 37.6], ['EGYPT', 30.5, 30.4], ['CYPRUS', 33.2, 34.25], ['CRETE', 24.9, 34.55]]) { const [x, y] = P([lon, lat]); G.fillText(regionName(tx), x, y); }
+        G.fillStyle = 'rgba(200,220,230,.35)'; G.font = 'italic 30px Georgia'; { const [x, y] = P([19.5, 34.6]); G.fillText(isEs() ? 'El Gran Mar' : 'The Great Sea', x, y); } };
       draw0(); bg.drawImage(cv, 0, 0);
       const line = (pts, upto, color, width, dash) => { g.strokeStyle = color; g.lineWidth = width; g.setLineDash(dash || []); g.lineCap = 'round'; g.beginPath(); let total = 0; const L = []; for (let i = 1; i < pts.length; i++) { L.push(Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])); total += L[i - 1]; } let d = upto * total; g.moveTo(pts[0][0], pts[0][1]); let head = pts[0];
         for (let i = 1; i < pts.length && d > 0; i++) { const k = Math.min(1, d / L[i - 1]); head = [pts[i - 1][0] + (pts[i][0] - pts[i - 1][0]) * k, pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * k]; g.lineTo(head[0], head[1]); d -= L[i - 1]; } g.stroke(); g.setLineDash([]); return head; };
-      const label = (n, bright) => { const [x, y] = P(CITIES[n]); g.fillStyle = bright ? '#fff4d0' : 'rgba(60,40,16,.8)'; g.beginPath(); g.arc(x, y, bright ? 6 : 3.5, 0, 7); g.fill(); if (bright) { g.strokeStyle = '#5a2a14'; g.lineWidth = 2; g.stroke(); g.font = '20px Georgia'; g.textAlign = 'left'; g.lineWidth = 4; g.strokeStyle = 'rgba(30,20,8,.85)'; g.strokeText(n, x + 10, y - 8); g.fillStyle = '#fff4d0'; g.fillText(n, x + 10, y - 8); } };
-      this.el.mapKicker.textContent = kicker; this.el.mapTitle.textContent = title; this.el.mapRef.textContent = ref; this.show('mapscreen');
+      const label = (n, bright) => { const [x, y] = P(CITIES[n]); g.fillStyle = bright ? '#fff4d0' : 'rgba(60,40,16,.8)'; g.beginPath(); g.arc(x, y, bright ? 6 : 3.5, 0, 7); g.fill(); if (bright) { g.strokeStyle = '#5a2a14'; g.lineWidth = 2; g.stroke(); g.font = '20px Georgia'; g.textAlign = 'left'; g.lineWidth = 4; g.strokeStyle = 'rgba(30,20,8,.85)'; g.strokeText(cityName(n), x + 10, y - 8); g.fillStyle = '#fff4d0'; g.fillText(cityName(n), x + 10, y - 8); } };
+      this.el.mapKicker.textContent = t(kicker); this.el.mapTitle.textContent = t(title); this.el.mapRef.textContent = ref.split(' · ').map((x, i) => i ? refLabel(x) : t(x)).join(' · '); this.show('mapscreen');
       const t0 = performance.now(); let done = false;
       const frame = () => { if (done) return; const t = Math.min(1, (performance.now() - t0) / 3800); g.drawImage(base, 0, 0);
         for (const r of past) line(pathPts(r), 1, 'rgba(110,60,30,.45)', 3, [3, 9]);

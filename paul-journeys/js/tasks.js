@@ -1,6 +1,7 @@
 // Side tasks and rewards: greetings, landmarks, deeds, crowns, ranks and mantles.
 import * as THREE from 'three';
 import { look } from './common.js';
+import { t } from './i18n.js';
 
 // Paul's own greetings and blessings, spoken when the player greets someone
 export const GREETINGS = [
@@ -36,9 +37,9 @@ export const SIDE = [
       const t = new THREE.Mesh(new THREE.ConeGeometry(1.5, 1.7, 4, 1, true), new THREE.MeshStandardMaterial({ color: 0x6a5a48, side: THREE.DoubleSide, roughness: 1 })); t.position.set(11.4, y + 0.85, 123.6); t.rotation.y = Math.PI / 4; t.castShadow = true; W.group.add(t); W.addCircle(11.4, 123.6, 1.1, y + 2);
       const poor = G.spawn(look(990, 'man', { robe: 0x6a6052, long: false, cloak: null, head: 'bare', beard: true, hair: 0x8a867e }), -10.6, 70, Math.PI / 2, 'One in need'); poor.setPose('sit'); poor.greetable = false;
       let work = 0, paid = false;
-      G.spot({ x: 9.7, z: 128, r: 2.2, label: () => `Work at the tentmaker’s bench (${work}/3)`, active: () => work < 3, async use() { const P = G.player; P.locked = true; P.yaw = Math.PI / 2; P.poseLock = true; G.paul.setPose('work'); G.sound.step(); await G.wait(2.6); G.paul.setPose('idle'); P.poseLock = false; P.locked = false; work++;
+      G.spot({ x: 9.7, z: 128, r: 2.2, label: () => t(`Work at the tentmaker’s bench (${work}/3)`), active: () => work < 3, async use() { const P = G.player; P.locked = true; P.yaw = Math.PI / 2; P.poseLock = true; G.paul.setPose('work'); G.sound.step(); await G.wait(2.6); G.paul.setPose('idle'); P.poseLock = false; P.locked = false; work++;
         if (work === 3) { G.deed('tent'); G.bark('Paul', 'You yourselves know that these hands served my necessities, and those who were with me.', 'Acts 20:34', 7); } } });
-      G.spot({ x: -9.4, z: 70, r: 2.6, label: () => 'Give what you have earned', active: () => work >= 3 && !paid, async use() { paid = true; poor.setPose('raise'); G.deed('give'); G.bark('Paul', 'It is more blessed to give than to receive.', 'Acts 20:35', 7); await G.wait(2.5); poor.setPose('sit'); } });
+      G.spot({ x: -9.4, z: 70, r: 2.6, label: () => t('Give what you have earned'), active: () => work >= 3 && !paid, async use() { paid = true; poor.setPose('raise'); G.deed('give'); G.bark('Paul', 'It is more blessed to give than to receive.', 'Acts 20:35', 7); await G.wait(2.5); poor.setPose('sit'); } });
     } },
   { greet: 0, landmarks: [], deeds: [['swift', 'Keep pace with the escort: reach Antipatris within 110 seconds of mounting']] },
   { greet: 3, landmarks: [] },
