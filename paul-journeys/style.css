@@ -76,3 +76,24 @@ select { background: #1c160e; color: var(--ink); border: 1px solid rgba(227, 194
 #mapKicker { color: var(--gold); font-size: 13px; letter-spacing: .3em; text-transform: uppercase; }
 #mapTitle { font-size: clamp(26px, 4.5vw, 44px); margin: 4px 0; }
 #mapGo { margin-top: 12px; }
+
+#rank { background: rgba(12, 9, 6, .55); padding: 5px 12px; border-radius: 14px; color: var(--gold); letter-spacing: .08em; }
+#journalBtn { pointer-events: auto; background: var(--panel); color: var(--ink); border: 1px solid rgba(227, 194, 122, .4); width: 34px; height: 34px; border-radius: 50%; font-size: 15px; cursor: pointer; }
+#tasks { position: absolute; right: 18px; top: 62px; width: min(300px, 44vw); font-size: 13.5px; line-height: 1.35; background: linear-gradient(270deg, rgba(12, 9, 6, .6), rgba(12, 9, 6, .25)); border-right: 2px solid rgba(227, 194, 122, .7); padding: 8px 12px; border-radius: 2px; }
+#tasks:empty { display: none; }
+#tasks h4 { margin: 0 0 4px; font-weight: 400; font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--gold); }
+#tasks div { margin: 3px 0; padding-left: 18px; position: relative; color: var(--ink); }
+#tasks div::before { content: '○'; position: absolute; left: 0; color: var(--gold); }
+#tasks div.done { color: rgba(244, 236, 216, .55); } #tasks div.done::before { content: '✔'; }
+#reward { position: absolute; left: 50%; top: 23%; transform: translateX(-50%); text-align: center; background: rgba(14, 10, 6, .82); border: 1px solid rgba(227, 194, 122, .6); border-radius: 6px; padding: 10px 22px; animation: reward 4.2s both; max-width: min(560px, 88vw); }
+#reward b { display: block; color: var(--gold); font-weight: 400; letter-spacing: .2em; text-transform: uppercase; font-size: 12px; }
+#reward span { font-size: 18px; } #reward small { display: block; font-size: 13px; color: var(--dim); font-style: italic; margin-top: 3px; }
+@keyframes reward { 0% { opacity: 0; transform: translate(-50%, 12px); } 10%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+.xpbar { height: 8px; border: 1px solid rgba(227, 194, 122, .6); border-radius: 4px; overflow: hidden; margin: 4px auto 6px; max-width: 420px; } .xpbar i { display: block; height: 100%; background: var(--gold); }
+#jBody { text-align: left; max-height: 52vh; overflow: auto; font-size: 14.5px; line-height: 1.45; margin-top: 10px; padding-right: 6px; }
+#jBody h4 { color: var(--gold); font-weight: 400; letter-spacing: .16em; text-transform: uppercase; font-size: 12px; margin: 14px 0 6px; border-bottom: 1px solid rgba(227, 194, 122, .25); padding-bottom: 3px; }
+#jBody .ch { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; } #jBody .ch span:last-child { color: var(--gold); white-space: nowrap; letter-spacing: .1em; }
+#jBody .lt { margin: 8px 0; } #jBody .lt b { color: var(--gold); font-weight: 400; } #jBody .lt i { color: #e6dcc4; }
+#jBody .mantles { display: flex; gap: 8px; flex-wrap: wrap; } #jBody .mantles button { min-width: 0; padding: 8px 12px; font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
+#jBody .mantles button i { width: 16px; height: 16px; border-radius: 50%; display: inline-block; border: 1px solid rgba(255, 255, 255, .4); } #jBody .mantles button.sel { border-color: var(--gold); background: rgba(227, 194, 122, .18); } #jBody .mantles button[disabled] { opacity: .4; }
+@media (max-width: 700px) { #tasks { display: none; } #objective { font-size: 16px; } #dlgText { font-size: 17px; } #minimap { width: 120px; height: 120px; } }

@@ -143,10 +143,11 @@ const cyprus = {
     await G.interact([424, 30], 'Board the ship', 4.5, 'Go down the quay and board the ship for Cyprus');
     await G.fade(1, 0.6);
     for (const [n, lx, lz] of [[barnabas, 1.2, 3], [mark, -1.3, 4.5]]) { n.follow = null; n.auto = false; n.speed = 0; ship.group.add(n.group); n.pos.set(lx, ship.deckY, lz); n.group.rotation.y = 0; }
-    P.helm(ship); P.throttle = 0.5; await G.fade(0, 0.8);
+    P.helm(ship); P.throttle = 0.5; await G.fade(0, 0.8); const tSail = G.game.time;
     G.bark('', 'So, being sent out by the Holy Spirit, they went down to Seleucia. From there they sailed to Cyprus.', 'Acts 13:4', 9);
     G.toast('W / S  set sail  ·  A / D  steer');
     await G.reach([128, -22], 20, 'Sail west to Salamis on Cyprus');
+    if (!G.auto && G.game.time - tSail < 60) G.deed('fairwind');
     await G.fade(1, 0.8); P.throttle = 0; ship.speed = 0; ship.x = 124; ship.z = -27.5; ship.heading = -Math.PI / 2;
     for (const n of [barnabas, mark]) { G.world.group.add(n.group); n.auto = true; }
     P.disembark(112, -22, -Math.PI / 2); barnabas.place(114, -21); mark.place(115, -23); follow(barnabas, paul, 2, 1.2); follow(mark, paul, 3, -1);
@@ -298,7 +299,7 @@ const philippi = {
     const girl = G.spawn(look(220, 'woman', { robe: 0xb89a70, height: 0.88 }), 14, -70, 0, 'A slave girl'); girl.group.visible = false;
     const masters = [0, 1].map(i => G.spawn(look(222 + i, 'greek', { robe: 0x8a5a3a, beard: true }), 20 + i * 2, -72, 0)); masters.forEach(m => { m.group.visible = false; });
     const jailer = G.spawn(look(230, 'soldier', { head: 'bare', hair: 0x2a1e14, beard: true }), 37, -97.5, 1.2, 'The jailer'); jailer.group.visible = false;
-    const sword = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.75, 0.07), new THREE.MeshStandardMaterial({ color: 0xc8ccd0, roughness: 0.35, metalness: 0.6 })); sword.position.set(0, -0.62, 0.38); sword.rotation.x = Math.PI / 2; sword.visible = false; jailer.arms[1].add(sword);
+    const sword = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.75, 0.07), new THREE.MeshStandardMaterial({ color: 0xc8ccd0, roughness: 0.35, metalness: 0.6 })); sword.position.set(0, -0.3, 0.36); sword.rotation.x = Math.PI / 2; sword.visible = false; jailer.hands[1].add(sword);
     const prisoners = [[51, -98.5, -2.2], [46, -98.8, 0.3], [50.5, -87.6, 3.6]].map((p, i) => { const n = G.spawn(look(240 + i, 'man', { robe: 0x7a705e, long: false, cloak: null, head: 'bare' }), p[0], p[1], p[2]); n.setPose('sit'); n.group.visible = false; return n; });
     return { silas, timothy, lydia, women, girl, masters, jailer, sword, prisoners, doors, beam, tA, tB };
   },
@@ -348,7 +349,7 @@ const philippi = {
     P.teleport(49.3, -92.3, -Math.PI / 2); paul.setPose('stocks'); P.poseLock = true; P.locked = true; P.camMax = 3.6; P.camDist = 3.2; P.ceil = 3.85; P.camYaw = 1.2; P.camPitch = 0.3;
     silas.follow = null; silas.place(49.3, -93.9, -Math.PI / 2); silas.setPose('stocks'); prisoners.forEach(p => { p.group.visible = true; }); jailer.group.visible = true; jailer.setPose('lie');
     await G.fade(0, 2);
-    for (let i = 0; i < 3; i++) { await G.interact(null, i === 0 ? 'Pray' : 'Sing a hymn to God'); G.sound.hymn(); paul.setPose('standPray'); silas.setPose('standPray'); paul.j.y = silas.j.y = -0.56; await G.wait(G.auto ? 0.2 : 4.2); paul.setPose('stocks'); silas.setPose('stocks'); }
+    for (let i = 0; i < 3; i++) { await G.interact(null, i === 0 ? 'Pray' : 'Sing a hymn to God'); G.sound.hymn(); paul.setPose('stocksPray'); silas.setPose('stocksPray'); await G.wait(G.auto ? 0.2 : 4.2); paul.setPose('stocks'); silas.setPose('stocks'); }
     await G.say([['', 'But about midnight Paul and Silas were praying and singing hymns to God, and the prisoners were listening to them.', 'Acts 16:25']]);
     // ---- the earthquake
     G.sound.rumble(6); G.engine.shake(0.4, 6); G.env({ motes: 1, moteColor: 0xb0a898 }, 0.5);

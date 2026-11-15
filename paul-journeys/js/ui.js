@@ -10,7 +10,7 @@ export const CITIES = { Jerusalem: [35.22, 31.78], Damascus: [36.3, 33.5], Tarsu
 
 export class UI {
   constructor() {
-    this.el = {}; for (const id of ['hud', 'chapterTag', 'objective', 'letters', 'minimap', 'compass', 'compassArrow', 'helm', 'helmFill', 'helmText', 'prompt', 'promptText', 'bark', 'dialog', 'dlgWho', 'dlgText', 'dlgRef', 'dlgHint', 'toast', 'title', 'chapters', 'chapterList', 'mapscreen', 'journeyMap', 'mapKicker', 'mapTitle', 'mapRef', 'mapGo', 'card', 'cardKicker', 'cardTitle', 'cardBody', 'cardRef', 'cardGo', 'pause', 'loading', 'fade', 'white', 'blind', 'game']) this.el[id] = $(id);
+    this.el = {}; for (const id of ['hud', 'chapterTag', 'objective', 'letters', 'minimap', 'compass', 'compassArrow', 'helm', 'helmFill', 'helmText', 'prompt', 'promptText', 'bark', 'dialog', 'dlgWho', 'dlgText', 'dlgRef', 'dlgHint', 'toast', 'title', 'chapters', 'chapterList', 'mapscreen', 'journeyMap', 'mapKicker', 'mapTitle', 'mapRef', 'mapGo', 'card', 'cardKicker', 'cardTitle', 'cardBody', 'cardRef', 'cardGo', 'pause', 'loading', 'fade', 'white', 'blind', 'game', 'tasks', 'reward', 'rank', 'journal', 'jRank', 'jBar', 'jNext', 'jBody']) this.el[id] = $(id);
     this.dlg = null; this.barkT = 0; this.mini = this.el.minimap.getContext('2d'); this.miniBase = null; this.fadeV = 0; this.whiteV = 0;
     this.el.dialog.addEventListener('click', () => this.advance());
   }
@@ -19,6 +19,8 @@ export class UI {
   setObjective(t) { if (this.el.objective.textContent !== (t || '')) this.el.objective.textContent = t || ''; }
   setLetters(n, total) { this.el.letters.textContent = total ? `✉ Letters ${n}/${total}` : ''; }
   setPrompt(label) { this.show('prompt', !!label); if (label) this.el.promptText.textContent = label; document.getElementById('btnE').style.opacity = label ? 1 : 0.35; }
+  setTasks(html) { if (this._tasks !== html) { this._tasks = html; this.el.tasks.innerHTML = html; } }
+  reward(kind, text, note = '') { const e = this.el.reward; e.innerHTML = `<b>${esc(kind)}</b><span>${esc(text)}</span>${note ? `<small>${esc(note)}</small>` : ''}`; e.classList.remove('hidden'); e.style.animation = 'none'; void e.offsetWidth; e.style.animation = ''; }
   toast(t) { const e = this.el.toast; e.textContent = t; e.classList.remove('hidden'); e.style.animation = 'none'; void e.offsetWidth; e.style.animation = ''; }
   bark(who, text, ref, sec = 5) { this.el.bark.innerHTML = (who ? `<b>${esc(who)}</b>` : '') + (ref ? `“${esc(text)}”<i>${esc(ref)}</i>` : `<span style="font-style:italic">${esc(text)}</span>`); this.show('bark'); this.barkT = sec; }
   // dialogue: lines are [who, text, ref]; ref present => verbatim Scripture

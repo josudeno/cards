@@ -42,6 +42,7 @@ export class Player {
     this.ship = null; this.horse = null; this.throttle = 0; this.swimming = false; this.stepT = 0; this.onStep = null;
     this.local = new THREE.Vector3(); // deck-local position
   }
+  rebuild() { const old = this.person, par = old.group.parent; const n = new Person(PAUL, old.world); n.auto = old.auto; n.pos.copy(old.pos); n.group.rotation.copy(old.group.rotation); n.yaw = old.yaw; n.pose = old.pose; if (par) { par.remove(old.group); par.add(n.group); } this.person = n; }
   setWorld(world) { this.world = world; this.person.world = world; this.mode = 'foot'; this.locked = false; this.speedMul = 1; this.ship = this.horse = null; this.ceil = null; this.camMax = 9; this.camDist = 5.2; this.swimming = false; this.person.auto = false; this.person.fixedY = false; this.person.setPose('idle'); world.group.add(this.person.group); }
   teleport(x, z, yaw = 0) { this.pos.set(x, this.world.ground(x, z), z); this.yaw = yaw; this.vy = 0; this.person.pos.copy(this.pos); this.person.yaw = yaw; this.person.group.rotation.y = yaw; this.camYaw = yaw + Math.PI; this.snapCam = true; }
   // hand control of Paul's body to a script (NPC-style walking) or back to the player
@@ -112,7 +113,7 @@ export class Player {
 
   updateCamera(dt) {
     const W = this.world, cam = this.engine.camera, tgt = this.camTarget;
-    const hgt = this.mode === 'ship' ? 2.5 : this.mode === 'horse' ? 2.5 : (this.person.pose === 'sit' || this.person.pose === 'stocks' || this.person.pose === 'pray' || this.person.pose === 'kneel') ? 1.0 : (this.person.pose === 'fallen' || this.person.pose === 'lie') ? 0.6 : 1.55;
+    const hgt = this.mode === 'ship' ? 2.5 : this.mode === 'horse' ? 2.5 : (this.person.pose === 'sit' || this.person.pose === 'stocks' || this.person.pose === 'stocksPray' || this.person.pose === 'pray' || this.person.pose === 'kneel') ? 1.0 : (this.person.pose === 'fallen' || this.person.pose === 'lie') ? 0.6 : 1.55;
     const want = new THREE.Vector3(this.pos.x, this.pos.y + hgt, this.pos.z);
     if (this.snapCam) { tgt.copy(want); } else tgt.lerp(want, Math.min(1, dt * 12));
     const cp = Math.cos(this.camPitch), dir = new THREE.Vector3(Math.sin(this.camYaw) * cp, Math.sin(this.camPitch), Math.cos(this.camYaw) * cp);

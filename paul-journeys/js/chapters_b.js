@@ -246,11 +246,12 @@ const jerusalem = {
       ['', 'He asked them to provide animals, that they might set Paul on one, and bring him safely to Felix the governor.', 'Acts 23:24'],
     ]);
     await G.interact(horse, 'Mount', 3.6, 'Mount the horse provided for you');
-    P.mount(horse); riding = true; G.toast('W ride · Shift gallop · A / D steer');
+    P.mount(horse); riding = true; const tRide = G.game.time; G.toast('W ride · Shift gallop · A / D steer');
     G.objective('Ride through the night with the escort, down to Antipatris', [0, -664]);
     if (G.auto) { G.warp([10, -430]); await G.wait(0.2); } else await G.until(() => pathDist(road, P.pos.x, P.pos.z)[1] > 0.6);
     G.env({ ...ENV.dawn(), rain: 0.08, wind: 1.0, fogDensity: 0.005 }, 30);
     await G.reach([0, -664], 12);
+    if (!G.auto && G.game.time - tRide < 110) G.deed('swift');
     P.locked = true; riding = false; horse.speed = 0;
     await G.say([
       ['', 'So the soldiers, carrying out their orders, took Paul and brought him by night to Antipatris.', 'Acts 23:31'],
@@ -283,7 +284,7 @@ const malta = {
     const cargo = [[-1.3, 4.6], [1.3, 5.3], [1.2, -2.4], [-1.5, 0.2], [1.6, 2.6]].map(([x, z], i) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.85, 0.95), wood); m.position.set(x, ship.deckY + 0.43, z); m.rotation.y = i; m.castShadow = true; ship.group.add(m); return m; });
     const skiff = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.55, 3.4), new THREE.MeshStandardMaterial({ color: 0x5e4530, roughness: 0.9 })); skiff.position.set(3.6, 2.2, 6.2); skiff.castShadow = true; ship.group.add(skiff);
     const bread = new Solid(); bread.cyl(0, 0, 0, 0.32, 0.24, 0.3, 0x9a7a4a, 10); bread.sphere(0, 0.33, 0, 0.17, 0xc89a5a, 1.3, 0.6, 1); bread.sphere(0.12, 0.36, 0.1, 0.13, 0xb88a4a, 1.2, 0.6, 1); const basket = bread.mesh(MATTE()); basket.position.set(-1.2, ship.deckY, -1.6); ship.group.add(basket);
-    const lamp = W.flame(0, ship.deckY + 2.6, -5.2, 0.9, true, ship.group); const lamp2 = W.flame(0, ship.deckY + 2.2, 7.8, 0.7, true, ship.group);
+    const lamp = W.flame(0, ship.deckY + 2.6, -5.2, 0.42, true, ship.group); const lamp2 = W.flame(0, ship.deckY + 2.2, 7.8, 0.36, true, ship.group); lamp.power = lamp2.power = 22;
     const deck = (lk, lx, lz, ry, name = '') => { const n = G.spawn(lk, 0, 0, 0, name); n.auto = false; ship.group.add(n.group); n.pos.set(lx, ship.deckY, lz); n.group.rotation.y = ry; return n; };
     const julius = deck(look(600, 'centurion'), 1.8, -5.6, 0.3, 'Julius the centurion');
     const luke = deck(look(601, 'man', { robe: 0x6a7a8a, cloak: 0x4a4a5a, beard: true, head: 'bare', long: false }), -1.6, -4.6, 0.6, 'Luke');
@@ -362,14 +363,14 @@ const malta = {
     for (let i = 0; i < 3; i++) { const s = sticks[i]; await G.interact([s.x, s.z], 'Gather sticks', 2.6, `Gather a bundle of sticks for the fire (${i}/3)`); s.g.visible = false; G.sound.step(); paul.setPose('carry'); P.poseLock = true; }
     await G.interact(fire, 'Lay the sticks on the fire', 3.6, 'Lay the bundle on the fire');
     P.locked = true; paul.setPose('hold'); G.sound.burst(0.8, 'bandpass', 2400, 900, 0.3);
-    const viper = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.022, 6, 14, 4.6), new THREE.MeshStandardMaterial({ color: 0x3a3a22, roughness: 0.6 })); viper.position.set(0, -0.66, 0.02); viper.rotation.set(0.6, 0.4, 0); paul.arms[1].add(viper);
+    const viper = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.022, 6, 14, 4.6), new THREE.MeshStandardMaterial({ color: 0x3a3a22, roughness: 0.6 })); viper.position.set(0, -0.3, 0.03); viper.rotation.set(0.6, 0.4, 0); paul.hands[1].add(viper);
     natives.forEach(n => n.faceTo(P.pos.x, P.pos.z));
     await G.say([
       ['', 'But when Paul had gathered a bundle of sticks and laid them on the fire, a viper came out because of the heat, and fastened on his hand.', 'Acts 28:3'],
       ['The islanders', 'No doubt this man is a murderer, whom, though he has escaped from the sea, yet Justice has not allowed to live.', 'Acts 28:4'],
     ]);
     await G.interact(null, 'Shake the creature off into the fire');
-    paul.setPose('shake'); await G.wait(G.auto ? 0.1 : 1.1); paul.arms[1].remove(viper); paul.setPose('idle'); P.poseLock = false; G.sound.burst(0.5, 'bandpass', 3000, 1200, 0.25);
+    paul.setPose('shake'); await G.wait(G.auto ? 0.1 : 1.1); paul.hands[1].remove(viper); paul.setPose('idle'); P.poseLock = false; G.sound.burst(0.5, 'bandpass', 3000, 1200, 0.25);
     await G.say([
       ['', 'However he shook off the creature into the fire, and wasn’t harmed.', 'Acts 28:5'],
       ['', 'But they expected that he would have swollen or fallen down dead suddenly, but when they watched for a long time and saw nothing bad happen to him, they changed their minds, and said that he was a god.', 'Acts 28:6'],
