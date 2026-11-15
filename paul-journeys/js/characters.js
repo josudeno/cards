@@ -9,7 +9,7 @@ const ROBES = [0xd8ccb0, 0xb89a70, 0x8a6a4a, 0x9a4a34, 0x5a6a84, 0x6a7a54, 0xc8b
 
 const POSES = {
   idle: {}, walk: {},
-  sit: { y: -0.56, lL: -1.5, lR: -1.45, aL: -0.45, aR: -0.5 },
+  sit: { y: -0.56, lL: -1.5, lR: -1.42, aL: -0.85, aR: -0.9, pitch: 0.16 },
   stocks: { y: -0.56, lL: -1.5, lR: -1.5, aL: -0.2, aR: -0.2, pitch: -0.12 },
   kneel: { y: -0.72, lL: 1.5, lR: 1.5, pitch: 0.1 },
   pray: { y: -0.72, lL: 1.5, lR: 1.5, pitch: 0.22, aL: -1.25, aR: -1.25, aLz: -0.5, aRz: 0.5 },
@@ -52,11 +52,12 @@ export class Person {
     S.cyl(0, 1.4, 0, 0.05, 0.06, 0.1, L.skin, 7); S.sphere(0, 1.6, 0, 0.125, L.skin, 0.95, 1.08, 1);
     S.box(0, 1.575, 0.118, 0.03, 0.05, 0.035, L.skin); S.sphere(0.045, 1.625, 0.108, 0.017, 0x1a1410, 1, 1, 0.6, 5); S.sphere(-0.045, 1.625, 0.108, 0.017, 0x1a1410, 1, 1, 0.6, 5);
     if (L.beard) S.sphere(0, 1.53, 0.055, 0.088, L.hair, 1, 1.15, 0.8, 8);
-    if (L.head === 'bare') { if (L.bald) S.sphere(0, 1.6, -0.035, 0.125, L.hair, 0.98, 0.9, 0.95, 8); else S.sphere(0, 1.635, -0.022, 0.13, L.hair, 1, 0.95, 1, 8); }
+    if (L.head === 'bare') { if (L.bald) S.sphere(0, 1.575, -0.04, 0.118, L.hair, 1.02, 0.8, 0.9, 8); else S.sphere(0, 1.635, -0.022, 0.13, L.hair, 1, 0.95, 1, 8); }
     if (L.head === 'cloth') { const c = L.cloth || 0xd8ccb0; S.sphere(0, 1.645, -0.02, 0.143, c, 1, 0.95, 1.02, 8); S.box(0, 1.33, -0.115, 0.27, 0.3, 0.05, c); S.cyl(0, 1.67, -0.01, 0.146, 0.146, 0.035, L.sash, 10); }
     if (L.head === 'veil') { const c = L.cloth || L.robe; S.sphere(0, 1.635, -0.025, 0.148, c, 1.02, 1, 1.05, 8); S.box(0, 1.2, -0.12, 0.34, 0.46, 0.06, c); }
     if (L.head === 'helmet' || L.head === 'crest') { S.sphere(0, 1.655, 0, 0.142, 0x9a9c9e, 1, 0.9, 1.05, 8); S.box(0, 1.53, -0.11, 0.2, 0.12, 0.04, 0x9a9c9e); if (L.head === 'crest') S.box(0, 1.76, 0, 0.3, 0.12, 0.05, 0xa82a22); else S.box(0, 1.77, 0, 0.04, 0.05, 0.16, 0x9a9c9e); }
     if (L.head === 'wreath') { S.sphere(0, 1.635, -0.022, 0.13, L.hair, 1, 0.95, 1, 8); S.add(new THREE.TorusGeometry(0.128, 0.018, 5, 12), 0x5a7a3a, 0, 1.68, 0, Math.PI / 2); }
+    if (L.spear) { S.cyl(-0.36, 0, 0.12, 0.018, 0.018, 2.3, 0x5a4028, 5); S.add(new THREE.ConeGeometry(0.04, 0.22, 5), 0xb0b4b8, -0.36, 2.4, 0.12); }
     const torso = S.mesh(mat); body.add(torso);
     // limbs
     const sleeve = L.armor ? L.robe : L.robe;

@@ -208,7 +208,7 @@ export class World {
   // true if the point is inside a solid collider (used by the camera)
   blocked(x, y, z) {
     for (const c of this.colliders) {
-      if (c.off || y > c.h) continue;
+      if (c.off || c.nocam || y > c.h) continue;
       const dx = x - c.x, dz = z - c.z;
       if (c.r !== undefined) { if (c.r > 1.2 && dx * dx + dz * dz < c.r * c.r) return true; continue; }
       const co = Math.cos(c.rot), si = Math.sin(c.rot);
@@ -247,7 +247,7 @@ export class World {
   rock(x, z, s = 1) { const r = this.rand; this._inst('rock', x, this.terrainFn(x, z) - 0.1, z, s * r.range(0.6, 1.6), r() * 6.28, s * r.range(0.5, 1.4)); if (s > 1.1) this.addCircle(x, z, s * 0.8, s * 1.2); }
   scatter(kind, n, x0, z0, x1, z1, ok, s = 1) { const r = this.rand; for (let i = 0, t = 0; i < n && t < n * 30; t++) { const x = r.range(x0, x1), z = r.range(z0, z1); if (ok && !ok(x, z, this.terrainFn(x, z))) continue; i++; kind === 'rock' ? this.rock(x, z, s) : this.tree(kind, x, z, s); } }
   grass(n, x0, z0, x1, z1, ok, colors = [0x7f8c48, 0x8c9850, 0x748442]) {
-    const r = this.rand; for (let i = 0, t = 0; i < n && t < n * 20; t++) { const x = r.range(x0, x1), z = r.range(z0, z1), h = this.terrainFn(x, z); if ((ok && !ok(x, z, h)) || this.ground(x, z) > h + 0.02) continue; i++; this._inst('tuft', x, h, z, r.range(0.8, 1.5), r() * 6.28, r.range(0.7, 1.7), jit(r.pick(colors), r, 0.12)); }
+    const r = this.rand; for (let i = 0, t = 0; i < n && t < n * 20; t++) { const x = r.range(x0, x1), z = r.range(z0, z1), h = this.terrainFn(x, z); if ((ok && !ok(x, z, h)) || this.ground(x, z) > h + 0.02) continue; i++; this._inst('tuft', x, h, z, r.range(0.7, 1.25), r() * 6.28, r.range(0.5, 1.25), jit(r.pick(colors), r, 0.12)); }
   }
 
   // ---- architecture primitives (all go into the baked static solid)

@@ -24,7 +24,7 @@ class Game {
     this.marker = null; this.interaction = null; this.compassTarget = null; this.time = 0; this.last = performance.now();
     this.unlocked = store.get('unlocked', 0); this.found = new Set(store.get('letters', []));
     this.totalLetters = CHAPTERS.reduce((n, c) => n + (c.letters || 0), 0);
-    const q = new URLSearchParams(location.search); this.autoplay = q.has('auto'); this.timeScale = +(q.get('speed') || 1);
+    const q = new URLSearchParams(location.search); this.autoplay = q.has('auto'); this.timeScale = +(q.get('speed') || 1); this.stopAt = q.get('stop'); // ?auto&speed=N&stop=text are test hooks
     this.makeBeacon(); this.bindUI();
     addEventListener('resize', () => this.engine.resize());
     this.engine.setQuality(store.get('quality', 'high')); document.getElementById('quality').value = this.engine.quality;
@@ -112,16 +112,17 @@ class Game {
     const A = (fn) => async (...a) => { chk(); const r = await fn(...a); chk(); return r; };
     const until = (fn) => new Promise((res, rej) => G.waiters.push({ fn, res, rej }));
     const wait = (s) => { const t = G.time + s; return until(() => G.time >= t); };
+    const stop = (text) => { if (G.stopAt && text && text.includes(G.stopAt)) { G.autoplay = false; G.timeScale = 1; G.fadeV = G.fadeTo = 0; } };
     const api = {
-      get player() { return G.player; }, get paul() { return G.player.person; }, get world() { return G.world; }, engine: G.engine, ui: G.ui, sound: G.sound, auto: G.autoplay, warp: (t) => G.warp(t), game: G, amb: (o) => Object.assign(G.amb, o),
+      get player() { return G.player; }, get paul() { return G.player.person; }, get world() { return G.world; }, engine: G.engine, ui: G.ui, sound: G.sound, get auto() { return G.autoplay; }, warp: (t) => G.warp(t), game: G, amb: (o) => Object.assign(G.amb, o),
       until: A(until), wait: A(wait),
       spawn(look, x, z, yaw = 0, name = '') { chk(); const p = new Person(look, G.world); p.name = name; p.place(x, z, yaw); G.world.group.add(p.group); G.npcs.push(p); return p; },
       beast(kind, color, x, z, yaw = 0) { chk(); const b = new Beast(kind, color, G.world); b.pos.set(x, G.world.ground(x, z), z); b.yaw = yaw; b.group.rotation.y = yaw; G.world.group.add(b.group); G.beasts.push(b); return b; },
       say: A(async (lines, opt = {}) => { if (!opt.free) G.player.locked = true; if (G.autoplay) { await wait(0.05); } else await G.ui.say(lines); if (!opt.free) G.player.locked = false; }),
       bark(who, text, ref, sec) { chk(); G.ui.bark(who, text, ref, sec); },
-      objective(text, target = null) { chk(); G.ui.setObjective(text); G.marker = target ? { target } : null; },
-      reach: A(async (target, radius = 3, text = null) => { if (text) G.ui.setObjective(text); G.marker = { target }; if (G.autoplay) { await wait(0.3); G.warp(target); await wait(0.1); } else await until(() => { const p = posOf(target), q = G.player.pos; return Math.hypot(p.x - q.x, p.z - q.z) < radius; }); G.marker = null; G.sound.chime(); }),
-      interact: A(async (target, label, radius = 2.8, text = null) => { if (text) G.ui.setObjective(text); G.marker = target ? { target } : null; if (G.autoplay) await wait(0.3); else await new Promise((res) => { G.interaction = { target, label, radius, res }; }); G.interaction = null; G.marker = null; G.ui.setPrompt(null); }),
+      objective(text, target = null) { chk(); stop(text); G.ui.setObjective(text); G.marker = target ? { target } : null; },
+      reach: A(async (target, radius = 3, text = null) => { stop(text); if (text) G.ui.setObjective(text); G.marker = { target }; if (G.autoplay) { await wait(0.3); G.warp(target); await wait(0.1); } else await until(() => { const p = posOf(target), q = G.player.pos; return Math.hypot(p.x - q.x, p.z - q.z) < radius; }); G.marker = null; G.sound.chime(); }),
+      interact: A(async (target, label, radius = 2.8, text = null) => { stop(text || label); if (text) G.ui.setObjective(text); G.marker = target ? { target } : null; if (G.autoplay) await wait(0.3); else await new Promise((res) => { G.interaction = { target, label, radius, res }; }); G.interaction = null; G.marker = null; G.ui.setPrompt(null); }),
       fade: A(async (v, sec = 1) => { G.fadeTo = v; G.fadeRate = 1 / Math.max(0.01, sec); await until(() => Math.abs(G.fadeV - v) < 0.01); }),
       white: A(async (v, sec = 1) => { G.whiteTo = v; G.whiteRate = 1 / Math.max(0.01, sec); await until(() => Math.abs(G.whiteV - v) < 0.01); }),
       card: A(async (o) => { if (G.autoplay) return; G.player.locked = true; G.input.enabled = false; if (document.exitPointerLock) document.exitPointerLock(); await G.ui.card(o); G.input.enabled = true; G.player.locked = false; }),
@@ -173,7 +174,8 @@ class Game {
       if (it && !ui.dlg) { const p = it.target ? posOf(it.target) : null, near = !p || Math.hypot(p.x - P.pos.x, p.z - P.pos.z) < it.radius; ui.setPrompt(near ? it.label : null); if (near && inp.hit('KeyE')) { this.interaction = null; ui.setPrompt(null); it.res(); } } else if (!it) ui.setPrompt(null);
       // objective beacon
       const mk = this.marker; this.beacon.visible = !!mk && !this.blindV;
-      if (mk) { const p = posOf(mk.target); const by = (p.y ?? null) !== null && p.y !== undefined && mk.target.isVector3 ? p.y : (P.mode === 'ship' || (this.world.waterLevel !== null && this.world.terrainFn(p.x, p.z) < this.world.waterLevel) ? this.world.waterLevel : this.world.ground(p.x, p.z)); this.beacon.position.set(p.x, (mk.target.pos ? mk.target.pos.y : by), p.z); this.beacon.material.uniforms.uT.value = this.time; this.beaconRing.scale.setScalar(1 + 0.15 * Math.sin(this.time * 3)); }
+      if (mk) { const p = posOf(mk.target), W = this.world; let y = (typeof p.y === 'number') ? p.y : W.ground(p.x, p.z); if (W.waterLevel !== null) y = Math.max(y, W.waterLevel);
+        this.beacon.position.set(p.x, y, p.z); this.beacon.material.uniforms.uT.value = this.time; this.beaconRing.scale.setScalar(1 + 0.15 * Math.sin(this.time * 3)); }
       // letters
       for (const L of this.letters) { if (L.taken) continue; L.g.rotation.y += dt * 1.5; L.g.position.y = L.y + Math.sin(this.time * 2 + L.x) * 0.12;
         if (this.state === 'play' && !ui.dlg && !ui.cardRes && Math.hypot(L.x - P.pos.x, L.z - P.pos.z) < 1.7 && Math.abs(P.pos.y - L.y + 1.2) < 3) { L.taken = true; L.g.visible = false; this.found.add(L.data.ref); store.set('letters', [...this.found]); ui.setLetters(this.found.size, this.totalLetters); this.sound.collect();
