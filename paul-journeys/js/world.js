@@ -144,10 +144,10 @@ function vegGeos() {
   const rock = S(); rock.add(new THREE.DodecahedronGeometry(0.8, 0), 0x8f8676, 0, 0.3, 0, 0.3, 0.5, 0.2, 1.2, 0.7, 1);
   const tuft = new THREE.BufferGeometry(); {
     const pos = [], uv = [], nrm = [], col = [];
-    for (let b = 0; b < 4; b++) {
-      const a = b * 1.7 + 0.3, ca = Math.cos(a), sa = Math.sin(a), w = 0.055, h = 0.45 + (b % 2) * 0.25, ox = Math.cos(b * 2.4) * 0.12, oz = Math.sin(b * 2.4) * 0.12, lean = 0.12;
-      pos.push(ox - ca * w, 0, oz - sa * w, ox + ca * w, 0, oz + sa * w, ox + sa * lean, h, oz - ca * lean);
-      uv.push(0, 0, 1, 0, 0.5, 1); nrm.push(0, 1, 0, 0, 1, 0, 0, 1, 0); col.push(0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 1, 1, 1);
+    for (let b = 0; b < 5; b++) {
+      const a = b * 1.7 + 0.3, ca = Math.cos(a), sa = Math.sin(a), w = 0.035, h = 0.3 + (b % 3) * 0.14, ox = Math.cos(b * 2.4) * 0.14, oz = Math.sin(b * 2.4) * 0.14, lean = 0.1;
+      const A = [ox - ca * w, 0, oz - sa * w], B = [ox + ca * w, 0, oz + sa * w], T = [ox + sa * lean, h, oz - ca * lean];
+      for (const tri of [[A, B, T], [B, A, T]]) { for (const v of tri) pos.push(...v); uv.push(0, 0, 1, 0, 0.5, 1); nrm.push(0, 1, 0, 0, 1, 0, 0, 1, 0); col.push(0.62, 0.62, 0.62, 0.62, 0.62, 0.62, 1.0, 1.0, 1.0); }
     }
     tuft.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); tuft.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
     tuft.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); tuft.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
@@ -219,7 +219,7 @@ export class World {
 
   // ---- terrain
   terrain({ size = 600, seg = 220, height, color, cx = 0, cz = 0 }) {
-    this.terrainFn = height; this.cx = cx; this.cz = cz;
+    this.terrainFn = height; this.cx = cx; this.cz = cz; this.terrainSize = size;
     const g = new THREE.PlaneGeometry(size, size, seg, seg); g.rotateX(-Math.PI / 2); g.translate(cx, 0, cz);
     const p = g.attributes.position, col = new Float32Array(p.count * 3), c = new THREE.Color();
     for (let i = 0; i < p.count; i++) {
@@ -232,6 +232,13 @@ export class World {
     const m = new THREE.Mesh(g, MATTE()); m.receiveShadow = true; this.group.add(m); this.terrainMesh = m; return m;
   }
 
+  // sea or river whose shallows and surf follow the terrain
+  water(level, opts = {}) {
+    const N = 256, size = this.terrainSize, data = new Uint8Array(N * N * 4);
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const h = this.terrainFn(this.cx + (i / (N - 1) - 0.5) * size, this.cz + (j / (N - 1) - 0.5) * size); data[(j * N + i) * 4] = Math.max(0, Math.min(255, (h + 12) / 16 * 255)); data[(j * N + i) * 4 + 3] = 255; }
+    const tex = new THREE.DataTexture(data, N, N, THREE.RGBAFormat); tex.magFilter = tex.minFilter = THREE.LinearFilter; tex.needsUpdate = true;
+    this.waterLevel = level; return this.engine.addWater(level, { ...opts, hmap: tex, hrect: [this.cx, this.cz, size] });
+  }
   // ---- instanced props
   _inst(kind, x, y, z, s = 1, ry = 0, sy = s, color = null) {
     (this.inst[kind] ||= []).push({ x, y, z, s, sy, ry, color });
@@ -239,8 +246,8 @@ export class World {
   tree(kind, x, z, s = 1) { const r = this.rand; const y = this.terrainFn(x, z) - 0.1; this._inst(kind, x, y, z, s * r.range(0.8, 1.25), r() * 6.28, s * r.range(0.8, 1.3)); if (kind !== 'bush') this.addCircle(x, z, kind === 'oak' ? 0.5 : 0.3); }
   rock(x, z, s = 1) { const r = this.rand; this._inst('rock', x, this.terrainFn(x, z) - 0.1, z, s * r.range(0.6, 1.6), r() * 6.28, s * r.range(0.5, 1.4)); if (s > 1.1) this.addCircle(x, z, s * 0.8, s * 1.2); }
   scatter(kind, n, x0, z0, x1, z1, ok, s = 1) { const r = this.rand; for (let i = 0, t = 0; i < n && t < n * 30; t++) { const x = r.range(x0, x1), z = r.range(z0, z1); if (ok && !ok(x, z, this.terrainFn(x, z))) continue; i++; kind === 'rock' ? this.rock(x, z, s) : this.tree(kind, x, z, s); } }
-  grass(n, x0, z0, x1, z1, ok, colors = [0x8a9a4a, 0x9aa655, 0x7d8f42]) {
-    const r = this.rand; for (let i = 0, t = 0; i < n && t < n * 20; t++) { const x = r.range(x0, x1), z = r.range(z0, z1), h = this.terrainFn(x, z); if (ok && !ok(x, z, h)) continue; i++; this._inst('tuft', x, h, z, r.range(0.8, 1.6), r() * 6.28, r.range(0.7, 1.9), jit(r.pick(colors), r, 0.12)); }
+  grass(n, x0, z0, x1, z1, ok, colors = [0x7f8c48, 0x8c9850, 0x748442]) {
+    const r = this.rand; for (let i = 0, t = 0; i < n && t < n * 20; t++) { const x = r.range(x0, x1), z = r.range(z0, z1), h = this.terrainFn(x, z); if ((ok && !ok(x, z, h)) || this.ground(x, z) > h + 0.02) continue; i++; this._inst('tuft', x, h, z, r.range(0.8, 1.5), r() * 6.28, r.range(0.7, 1.7), jit(r.pick(colors), r, 0.12)); }
   }
 
   // ---- architecture primitives (all go into the baked static solid)
@@ -428,7 +435,7 @@ export class World {
     const V = vegGeos(), dummy = new THREE.Object3D();
     const treeMat = windify(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 'tree', 1);
     const rockMat = MATTE();
-    const grassMat = windify(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 'grass', 1);
+    const grassMat = windify(new THREE.MeshLambertMaterial({ vertexColors: true }), 'grass', 1);
     for (const kind in this.inst) {
       const list = this.inst[kind], geo = V[kind];
       const mesh = new THREE.InstancedMesh(geo, kind === 'tuft' ? grassMat : kind === 'rock' ? rockMat : treeMat, list.length);
@@ -445,14 +452,14 @@ export class World {
   update(dt, t) {
     const d = this._dummy; if (!d) return;
     if (this.flameMesh.count !== this.flames.length) this.flameMesh.count = Math.min(this.flames.length, this.flameMesh.instanceMatrix.count);
-    const wind = this.engine.env.wind;
+    const wind = this.engine.env.wind, dark = Math.max(0.1, Math.min(1, 1.35 - this.engine.env.sunInt / 2.4));
     this.flames.forEach((f, i) => {
       if (i >= this.flameMesh.count) return;
       const fl = 0.75 + 0.25 * Math.sin(t * 13 + f.seed) + 0.18 * Math.sin(t * 31 + f.seed * 3);
       if (f.parent) { f.parent.updateWorldMatrix(true, false); d.position.set(f.x, f.y, f.z).applyMatrix4(f.parent.matrixWorld); } else d.position.set(f.x, f.y, f.z);
       const s = f.on ? f.size * (0.85 + 0.3 * fl) : 0.0001; d.scale.set(s, s * (1 + 0.3 * fl), s);
       d.rotation.set(Math.sin(t * 9 + f.seed) * 0.15 + wind * 0.12, 0, Math.cos(t * 7 + f.seed) * 0.15 - wind * 0.1); d.updateMatrix(); this.flameMesh.setMatrixAt(i, d.matrix);
-      if (f.light) f.light.intensity = f.on ? f.power * (0.75 + 0.35 * fl) : 0;
+      if (f.light) f.light.intensity = f.on ? f.power * dark * (0.75 + 0.35 * fl) : 0;
     });
     this.flameMesh.instanceMatrix.needsUpdate = true;
     for (const u of this.updaters) u(dt, t);
@@ -485,7 +492,7 @@ export function makeShip({ sail = true, foresail = true, cargo = true } = {}) {
   S.sphere(0, 6.9, -L / 2 + 0.75, 0.22, 0xc8a040, 1, 0.8, 1.6);
   S.cyl(0, 3.4, L / 2 - 0.3, 0.14, 0.2, 2.2, 0x7a2e20, 6, 0.5);
   // mast, yard, stays
-  S.cyl(0, deckY, 1.2, 0.2, 0.28, 13.5, wood, 8); S.cyl(0, deckY + 12.4, 1.2, 0.11, 0.11, 12, wood, 6, 0, Math.PI / 2);
+  S.cyl(0, deckY, 1.2, 0.2, 0.28, 13.5, wood, 8); S.cyl(0, deckY + 6.4, 1.2, 0.11, 0.11, 12, wood, 6, 0, Math.PI / 2);
   S.cyl(0, deckY + 13.5, 1.2, 0.3, 0.3, 0.25, dark, 8);
   S.cyl(0, deckY + 1.9, L / 2 - 4.3, 0.1, 0.14, 5.2, wood, 6, 0.55); // artemon mast
   // stern cabin and rails
@@ -496,7 +503,7 @@ export function makeShip({ sail = true, foresail = true, cargo = true } = {}) {
   if (cargo) { S.box(-1.2, deckY, 4.6, 1, 1, 1, 0x8a6a44, 0.2); S.box(1.3, deckY, 5.2, 0.9, 0.9, 0.9, 0x80603c, 0.5); S.box(1.1, deckY, -2.6, 1.1, 0.8, 1.1, 0x8a6a44, 0.1); S.box(-1.4, deckY, -3.2, 0.8, 0.8, 0.8, 0x7a5c3c, 0.7);
     for (let i = 0; i < 5; i++) { const pts = [[0.001, 0], [0.1, 0.05], [0.22, 0.35], [0.2, 0.6], [0.08, 0.8], [0.1, 0.95]].map(p => new THREE.Vector2(p[0], p[1])); S.add(new THREE.LatheGeometry(pts, 8), 0xb06a3c, -0.4 + (i % 3) * 0.45, deckY, 6.6 + Math.floor(i / 3) * 0.45); } }
   const g = new THREE.Group(); const hull = S.mesh(MATTE2()); g.add(hull);
-  const clothMat = (c) => windify(new THREE.MeshStandardMaterial({ color: c, side: THREE.DoubleSide, roughness: 1 }), 'sail', 1);
+  const clothMat = (c) => windify(new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.16, side: THREE.DoubleSide, roughness: 1 }), 'sail', 1);
   const sails = [];
   if (sail) { const sg = new THREE.PlaneGeometry(11, 9, 14, 12); const m = new THREE.Mesh(sg, clothMat(0xe6dcc0)); m.position.set(0, deckY + 7.9, 1.45); m.castShadow = true; m.receiveShadow = true; g.add(m); sails.push(m); }
   else { S.cyl(0, 0, 0, 0.3, 0.3, 10.5, 0xd8ceb2, 7, 0, Math.PI / 2); const f = S.mesh(MATTE()); f.position.set(0, deckY + 12.0 - 5.25, 1.2); f.position.y = deckY + 12.1; g.add(f); f.geometry.translate(0, -5.25, 0); }

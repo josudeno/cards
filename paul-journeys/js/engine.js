@@ -50,11 +50,11 @@ export function windify(mat, kind, amp = 1) {
 
 // ---------------------------------------------------------------- environment presets
 const ENV_BASE = {
-  sunElev: 55, sunAzim: 35, sunColor: C(0xfff1d6), sunInt: 3.2,
+  sunElev: 55, sunAzim: 35, sunColor: C(0xfff1d6), sunInt: 2.9,
   hemiSky: C(0xbfd8ff), hemiGround: C(0x8a7355), hemiInt: 0.9,
   skyTop: C(0x2f6fcf), skyHorizon: C(0xbcd8f0), fog: C(0xbcd4e8), fogDensity: 0.0022,
   cloud: 0.35, cloudColor: C(0xffffff), cloudDark: C(0x9aa6b8), stars: 0, sunDisk: 1,
-  wind: 0.6, windAngle: 0.6, rain: 0, lightning: 0, exposure: 1.0, bloom: 0.3,
+  wind: 0.6, windAngle: 0.6, rain: 0, lightning: 0, exposure: 0.88, bloom: 0.3,
   motes: 0.4, moteColor: C(0xfff2cc), waveAmp: 0.35,
   waterDeep: C(0x0a3a5c), waterShallow: C(0x1f8a9a), glory: 0,
 };
@@ -65,7 +65,7 @@ export function makeEnv(o = {}) {
   return e;
 }
 export const ENV = {
-  noonDesert: () => makeEnv({ sunElev: 78, sunAzim: 20, sunColor: 0xfff6e0, sunInt: 3.8, skyTop: 0x3a7fd6, skyHorizon: 0xe6dcc0, fog: 0xe4d8ba, fogDensity: 0.0026, cloud: 0.12, hemiGround: 0xb89a6a, wind: 0.5, motes: 0.8, moteColor: 0xf2deb0 }),
+  noonDesert: () => makeEnv({ sunElev: 72, sunAzim: 25, sunColor: 0xfff3d8, sunInt: 3.0, hemiInt: 0.75, exposure: 0.82, skyTop: 0x1f63c8, skyHorizon: 0xb9cfe0, fog: 0xcfd0c0, fogDensity: 0.0024, cloud: 0.2, hemiGround: 0xb89a6a, wind: 0.5, motes: 0.8, moteColor: 0xf2deb0 }),
   seaDay: () => makeEnv({ sunElev: 48, sunAzim: -40, skyTop: 0x2a6ad0, skyHorizon: 0xb5dbf2, fog: 0xb4d6ee, fogDensity: 0.0012, cloud: 0.4, wind: 1.0, windAngle: -1.45, waveAmp: 0.5, motes: 0.1 }),
   golden: () => makeEnv({ sunElev: 16, sunAzim: -70, sunColor: 0xffb46a, sunInt: 3.4, skyTop: 0x3c62a8, skyHorizon: 0xf6c890, fog: 0xeec294, fogDensity: 0.0026, cloud: 0.45, cloudColor: 0xffe2bf, cloudDark: 0xa0788a, hemiSky: 0xc4c8e8, hemiGround: 0x9a7350, hemiInt: 0.75, wind: 0.7, moteColor: 0xffd9a0, motes: 0.7 }),
   windyPlateau: () => makeEnv({ sunElev: 32, sunAzim: 60, sunColor: 0xffe0b0, sunInt: 3.2, skyTop: 0x3a6cbc, skyHorizon: 0xdcd6c0, fog: 0xd8d0b8, fogDensity: 0.003, cloud: 0.6, cloudDark: 0x8a8c98, wind: 1.7, windAngle: 0.3, motes: 1.0, moteColor: 0xe8d6a8 }),
@@ -95,7 +95,7 @@ float hash3(vec3 p){ return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 4
 void main(){
   vec3 d = normalize(vDir);
   float h = max(d.y, 0.0);
-  vec3 col = mix(uHorizon, uTop, pow(h, 0.55));
+  vec3 col = mix(uHorizon, uTop, pow(h, 0.42));
   if (d.y < 0.0) col = mix(uHorizon, uHorizon * 0.55, clamp(-d.y * 5.0, 0.0, 1.0));
   float sd = max(dot(d, uSunDir), 0.0);
   col += uSunColor * (pow(sd, 6.0) * 0.10 + pow(sd, 70.0) * 0.30) * uSunDisk;
@@ -156,7 +156,7 @@ void main(){
 const WATER_FRAG = `
 uniform float uTime, uAmp, uFogDensity, uFoam; uniform vec3 uFocus;
 uniform vec3 uDeep, uShallow, uSunDir, uSunColor, uTop, uHorizon, uFog, uAmbient;
-uniform vec4 uShore[3];
+uniform sampler2D uHMap; uniform vec4 uHRect; uniform float uLevel;
 varying vec3 vWorld; varying float vH;
 ${NOISE_GLSL}
 ${WAVE_GLSL}
@@ -174,22 +174,21 @@ void main(){
   vec3 sky = mix(uHorizon, uTop, pow(clamp(R.y, 0.0, 1.0), 0.5));
   float ndl = max(dot(N, uSunDir), 0.0);
   vec3 body = mix(uDeep, uShallow, clamp(0.35 + vH * 0.45, 0.0, 1.0));
-  float shoreMix = 0.0, shoreFoam = 0.0;
-  for (int i = 0; i < 3; i++) { if (uShore[i].z > 0.0) {
-    float sdist = length(vWorld.xz - uShore[i].xy) - uShore[i].z;
-    shoreMix = max(shoreMix, 1.0 - smoothstep(0.0, uShore[i].w, sdist));
-    shoreFoam = max(shoreFoam, (1.0 - smoothstep(0.0, 9.0, sdist)) * (0.5 + 0.5 * sin(sdist * 1.1 + uTime * 1.6 + n0 * 6.0)));
-  } }
+  float depth = 20.0;
+  if (uHRect.w > 0.5) { vec2 huv = (vWorld.xz - uHRect.xy) / uHRect.z + 0.5; depth = uLevel - (texture2D(uHMap, huv).r * 16.0 - 12.0); }
+  float shoreMix = 1.0 - smoothstep(0.0, 5.5, depth);
+  float shoreFoam = (1.0 - smoothstep(0.15, 1.5, depth + vH * uAmp * 0.6)) * (0.55 + 0.45 * sin(depth * 4.0 - uTime * 1.7 + n0 * 7.0));
   body = mix(body, uShallow * 1.5 + vec3(0.02, 0.10, 0.09), shoreMix * 0.75);
   vec3 col = body * (uAmbient + uSunColor * ndl * 0.6);
   col = mix(col, sky, fres * 0.85);
   col += uSunColor * pow(max(dot(R, uSunDir), 0.0), 220.0) * 4.0;
-  float crest = smoothstep(0.55, 1.15, vH + (n0 - 0.5) * 0.9) * uFoam;
-  float foam = clamp(crest + shoreFoam * smoothstep(0.35, 0.75, n0 + shoreFoam * 0.4), 0.0, 1.0);
+  float fn = fbm(rp * 2.7 - uTime * vec2(0.12, 0.2));
+  float crest = smoothstep(0.85, 1.5, vH + (n0 - 0.5) * 0.8) * smoothstep(0.38, 0.62, fn) * uFoam;
+  float foam = clamp(crest + shoreFoam * smoothstep(0.3, 0.6, fn + shoreFoam * 0.3), 0.0, 1.0);
   col = mix(col, (uAmbient + uSunColor * 0.7) * vec3(0.95, 0.97, 1.0), foam * 0.85);
   float f = 1.0 - exp(-uFogDensity * uFogDensity * dist * dist);
   col = mix(col, uFog, f);
-  gl_FragColor = vec4(col, mix(0.82, 1.0, clamp(fres + foam + f + (1.0 - shoreMix) * 0.6, 0.0, 1.0)));
+  gl_FragColor = vec4(col, clamp(mix(0.5, 0.97, smoothstep(0.0, 3.5, depth)) + fres + foam + f, 0.0, 1.0));
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
 }`;
@@ -337,7 +336,7 @@ export class Engine {
       uDeep: { value: C(0) }, uShallow: { value: C(0) }, uSunDir: { value: this.sunDir }, uSunColor: { value: C(0) },
       uTop: this.skyU.uTop, uHorizon: this.skyU.uHorizon, uFog: { value: C(0) }, uAmbient: { value: C(0) },
       uWaveA: { value: WAVES.map(w => new THREE.Vector4(w[0], w[1], w[2], w[3])) }, uWaveS: { value: WAVES.map(w => w[4]) },
-      uShore: { value: [0, 1, 2].map(i => { const s = (opts.shores || [])[i]; return s ? new THREE.Vector4(s[0], s[1], s[2], s[3] || 30) : new THREE.Vector4(0, 0, 0, 1); }) },
+      uHMap: { value: opts.hmap || null }, uHRect: { value: opts.hmap ? new THREE.Vector4(opts.hrect[0], opts.hrect[1], opts.hrect[2], 1) : new THREE.Vector4(0, 0, 1, 0) }, uLevel: { value: level },
     };
     let geo;
     if (opts.size) { geo = new THREE.PlaneGeometry(opts.size[0], opts.size[1], 64, 64); geo.rotateX(-Math.PI / 2); }

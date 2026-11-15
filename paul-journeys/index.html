@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>To the Ends of the Earth — The Journeys of Paul</title>
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js", "three/addons/": "./vendor/addons/" } }</script>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="blind"></div>
+<div id="white" class="overlay"></div>
+<div id="fade" class="overlay"></div>
+
+<div id="hud" class="hidden">
+  <div id="topleft">
+    <div id="chapterTag"></div>
+    <div id="objective"></div>
+  </div>
+  <div id="topright"><span id="letters"></span><button id="pauseBtn" aria-label="Pause">II</button></div>
+  <canvas id="minimap" width="360" height="360"></canvas>
+  <div id="compass" class="hidden"><div id="compassArrow">▲</div><div id="compassLabel">voice</div></div>
+  <div id="helm" class="hidden"><div class="bar"><i id="helmFill"></i></div><span id="helmText"></span></div>
+  <div id="prompt" class="hidden"><kbd>E</kbd><span id="promptText"></span></div>
+  <div id="bark" class="hidden"></div>
+  <div id="dialog" class="hidden">
+    <div id="dlgWho"></div>
+    <div id="dlgText"></div>
+    <div id="dlgFoot"><span id="dlgRef"></span><span id="dlgHint">Space / tap ▸</span></div>
+  </div>
+  <div id="toast" class="hidden"></div>
+  <button id="btnE" class="touchbtn">E</button>
+  <button id="btnJump" class="touchbtn">⤒</button>
+</div>
+
+<div id="title" class="screen">
+  <div class="panel">
+    <div class="kicker">The Acts of the Apostles</div>
+    <h1>To the Ends of the Earth</h1>
+    <h2>The Journeys of Paul</h2>
+    <p class="verse">“…he is my chosen vessel to bear my name before the nations and kings, and the children of Israel.” <span>Acts 9:15</span></p>
+    <div class="buttons">
+      <button id="btnBegin" class="primary">Begin the journey</button>
+      <button id="btnChapters">Chapters</button>
+    </div>
+    <div class="row">Graphics
+      <select id="quality"><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+      <label><input type="checkbox" id="sound" checked> Sound</label>
+    </div>
+    <p class="help"><b>WASD</b> move · <b>Mouse</b> look · <b>Shift</b> run · <b>Space</b> jump / continue · <b>E</b> act · <b>Esc</b> pause<br>Touch: left thumb moves, right thumb looks.</p>
+    <p class="fine">Every spoken line is quoted from Scripture (World English Bible, public domain) with its reference. Narration summarises the same passages. Scenery, weather and faces are an artist’s impression.</p>
+  </div>
+</div>
+
+<div id="chapters" class="screen hidden"><div class="panel wide"><h3>Chapters</h3><div id="chapterList"></div><div class="buttons"><button id="btnBack">Back</button></div></div></div>
+
+<div id="mapscreen" class="screen hidden">
+  <canvas id="journeyMap" width="1280" height="720"></canvas>
+  <div id="mapCaption"><div id="mapKicker"></div><div id="mapTitle"></div><div id="mapRef"></div><button id="mapGo" class="primary">Continue</button></div>
+</div>
+
+<div id="card" class="screen hidden"><div class="panel">
+  <div class="kicker" id="cardKicker"></div><h3 id="cardTitle"></h3><div id="cardBody"></div><div id="cardRef"></div>
+  <div class="buttons"><button id="cardGo" class="primary">Continue</button></div>
+</div></div>
+
+<div id="pause" class="screen hidden"><div class="panel">
+  <h3>Paused</h3>
+  <div class="buttons col"><button id="btnResume" class="primary">Resume</button><button id="btnRestart">Restart chapter</button><button id="btnSkip">Skip to next chapter</button><button id="btnQuit">Title screen</button></div>
+</div></div>
+
+<div id="loading" class="screen"><div class="panel"><div class="kicker">Preparing the road…</div></div></div>
+<script type="module" src="./js/game.js"></script>
+</body>
+</html>
