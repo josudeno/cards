@@ -9,6 +9,7 @@ const C = (h) => new THREE.Color(h);
 
 // ---------------------------------------------------------------- wind
 // uWind = (dirX, dirZ, strength). Shared by grass, trees, cloth, rain, sails.
+export const matteU = { uGrain: { value: null }, uWet: { value: 0 } };
 export const windU = { uTime: { value: 0 }, uWind: { value: new THREE.Vector3(1, 0, 0.5) } };
 
 const WIND_HEAD = `
@@ -361,7 +362,7 @@ export class Engine {
   clearWorld() {
     this.world.traverse(o => {
       if (o.geometry) o.geometry.dispose();
-      if (o.material) for (const m of [].concat(o.material)) { if (m.map && !m.map.userData.shared) m.map.dispose(); m.dispose(); }
+      if (o.material) for (const m of [].concat(o.material)) { if (m.userData.shared) continue; if (m.map && !m.map.userData.shared) m.map.dispose(); m.dispose(); }
     });
     this.scene.remove(this.world);
     this.world = new THREE.Group(); this.scene.add(this.world);
@@ -399,6 +400,7 @@ export class Engine {
     this.renderer.toneMappingExposure = e.exposure * (1 + e.glory * 1.5);
     if (this.bloom) { this.bloom.strength = e.bloom + e.glory * 1.6; this.bloom.threshold = 0.92 - e.glory * 0.5; }
     this.flashLight.intensity = flash * 5;
+    matteU.uWet.value += (Math.min(1, e.rain * 1.6) - matteU.uWet.value) * 0.02;
     for (const w of this.waters) {
       w.u.uAmp.value = e.waveAmp * w.ampScale; w.u.uDeep.value.copy(e.waterDeep); w.u.uShallow.value.copy(e.waterShallow);
       w.u.uSunColor.value.copy(e.sunColor).multiplyScalar(e.sunInt / 3); w.u.uFog.value.copy(this.scene.fog.color);
