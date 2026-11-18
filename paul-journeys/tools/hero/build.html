@@ -24,6 +24,7 @@ const FACE = /Eye|Lip|Mouth|Cheek|Jaw|Nose|Brow|brow|Masseter|Caninus|Tongue/;
     const a = await load('anims/' + f + '.max.fbx'); let c = a.animations[0];
     if (t1) c = THREE.AnimationUtils.subclip(c, k, Math.round(t0 * 30), Math.round(t1 * 30), 30); c.name = k;
     c.tracks = c.tracks.filter((t) => !FACE.test(t.name)).filter((t) => t.name.endsWith('.quaternion') || (t.name.endsWith('.position') && /Pelvis|Bip01\.position|^Bip01_Pelvis/.test(t.name)) );
+    for (const t of c.tracks) if (/^Bip01\.position$/.test(t.name)) { const v = t.values; for (let i = 0; i < v.length; i += 3) { v[i] = 0; v[i + 2] = 0; } } // the game moves the character; keep only the vertical bob
     c.optimize();
     info.clips[k] = { dur: +c.duration.toFixed(2), tracks: c.tracks.length }; clips.push(c);
   }

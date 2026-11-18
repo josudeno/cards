@@ -13,12 +13,18 @@ let ASSET = null;
 // Some hosts refuse to serve .glb files; for those, tools/hero/pack-js.mjs writes the same model as a JavaScript module.
 export async function preloadHero() {
   const L = new GLTFLoader();
-  try { ASSET = await L.loadAsync('./assets/paul.glb'); return true; } catch (e) { /* try the packed copy */ }
+  try { ASSET = pinRoot(await L.loadAsync('./assets/paul.glb')); return true; } catch (e) { /* try the packed copy */ }
   try {
     const { default: b64 } = await import('../assets/paul-glb.js');
     const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-    ASSET = await L.parseAsync(bin.buffer, './assets/'); return true;
+    ASSET = pinRoot(await L.parseAsync(bin.buffer, './assets/')); return true;
   } catch (e) { console.warn('Paul model unavailable, using the built-in figure', e); ASSET = null; return false; }
+}
+// The captured walk and run still carry forward travel in the root bone (about 1.2 m per walk cycle), which made the
+// body drift ahead and snap back every loop. The game moves Paul itself, so pin the root's horizontal position.
+function pinRoot(gltf) {
+  for (const c of gltf.animations) for (const t of c.tracks) if (t.name === 'Bip01.position') { const v = t.values; for (let i = 0; i < v.length; i += 3) { v[i] = 0; v[i + 2] = 0; } }
+  return gltf;
 }
 export const makePaul = (world) => (ASSET ? new Hero(PAUL, world) : new Person(PAUL, world));
 
