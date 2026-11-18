@@ -10,9 +10,15 @@ import { Person, POSES, J0, PAUL } from './characters.js';
 import { lerp } from './world.js';
 
 let ASSET = null;
-export async function preloadHero(url = './assets/paul.glb') {
-  try { ASSET = await new GLTFLoader().loadAsync(url); } catch (e) { console.warn('Paul model unavailable, using the built-in figure', e); ASSET = null; }
-  return !!ASSET;
+// Some hosts refuse to serve .glb files; for those, tools/hero/pack-js.mjs writes the same model as a JavaScript module.
+export async function preloadHero() {
+  const L = new GLTFLoader();
+  try { ASSET = await L.loadAsync('./assets/paul.glb'); return true; } catch (e) { /* try the packed copy */ }
+  try {
+    const { default: b64 } = await import('../assets/paul-glb.js');
+    const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    ASSET = await L.parseAsync(bin.buffer, './assets/'); return true;
+  } catch (e) { console.warn('Paul model unavailable, using the built-in figure', e); ASSET = null; return false; }
 }
 export const makePaul = (world) => (ASSET ? new Hero(PAUL, world) : new Person(PAUL, world));
 
