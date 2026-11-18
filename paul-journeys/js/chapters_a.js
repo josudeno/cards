@@ -16,6 +16,7 @@ const damascus = {
     W.bounds = 235; W.road(road, 7);
     const H = (x, z) => { const rd = pathDist(road, x, z)[0], cd = cityD(x, z); const m = smooth(5, 32, rd) * smooth(0, 28, cd); return (fbm(x * 0.008, z * 0.008) * 4 - 2) * smooth(0, 28, cd) + (fbm(x * 0.021 + 3, z * 0.021) * 20 - 7) * m; };
     W.terrain({ size: 560, seg: 200, height: H, color: (x, z, h, sl) => { const rd = pathDist(road, x, z)[0], cd = cityD(x, z); if (rd < 3.3 + fbm(x * 0.3, z * 0.3)) return cd < 0 ? 0xb8a888 : 0xa8926a; if (cd < 0) return 0xc2ae88; if (sl > 0.45) return 0xa8946e; const oasis = smooth(70, 5, cd) * smooth(0.35, 0.6, fbm(x * 0.04, z * 0.04)); return new THREE.Color(0xd9c59a).lerp(new THREE.Color(0x98a05c), oasis * 0.8).getHex(); } });
+    W.horizon({ color: 0xb8a47c, height: 60 });
     W.cityWalls(-72, -202, 72, -78, 7.5, [{ side: 's', at: 0.5, width: 6 }]);
     const court = (x, z) => x < -4 && x > -26 && Math.abs(z + 135) < 11;
     W.street(0, -84, 0, -196, 9, 'mud', { skip: court }); W.street(-66, -160, -8, -160, 6, 'mud', { skip: court }); W.street(8, -118, 66, -118, 6, 'mud'); W.street(10, -172, 66, -172, 6, 'mud', { sides: [1] }); W.street(-66, -104, -10, -104, 6, 'mud', { sides: [-1] });
@@ -192,6 +193,7 @@ const lystra = {
     W.bounds = 215; W.road(road, 7);
     const H = (x, z) => { const rd = pathDist(road, x, z)[0], cd = cityD(x, z), tf = smooth(34, 16, Math.hypot(x - 36, z + 4)); const m = smooth(5, 30, rd) * smooth(0, 26, cd) * (1 - tf); return (fbm(x * 0.01, z * 0.01) * 5 - 2.5) * smooth(0, 26, cd) * (1 - tf) + (fbm(x * 0.022 + 7, z * 0.022) * 18 - 6) * m + smooth(150, 260, Math.hypot(x, z + 20)) * 46 * (0.5 + fbm(x * 0.01, z * 0.01)); };
     W.terrain({ size: 600, seg: 200, height: H, color: (x, z, h, sl) => { const rd = pathDist(road, x, z)[0], cd = cityD(x, z); if (rd < 3.3 + fbm(x * 0.3, z * 0.3)) return 0xa8946c; if (cd < 0) return 0xb8a682; if (sl > 0.5) return 0x8f866e; if (h > 30) return 0x9a947e; return new THREE.Color(0xb8a865).lerp(new THREE.Color(0x8f9455), fbm(x * 0.03, z * 0.03)).getHex(); } });
+    W.horizon({ color: 0x9a9070, height: 95, seed: 7 });
     W.cityWalls(-58, -154, 58, -38, 6, [{ side: 's', at: 0.5, width: 6 }], 0xb8a688);
     W.street(0, -44, 0, -74, 8, 'mud'); W.street(-52, -112, 52, -112, 6, 'stone', { sides: [1] }); W.street(-22, -76, -22, -108, 6, 'mud', { sides: [1] }); W.street(22, -76, 22, -108, 6, 'mud', { sides: [-1] }); W.street(-50, -136, 50, -136, 6, 'mud', { sides: [1] });
     W.stall(-12, -80, 0); W.stall(13, -102, Math.PI); W.stall(-14, -100, Math.PI / 2); W.pot(8, -86); W.pot(9, -87.2, 0.8);
@@ -275,6 +277,7 @@ const philippi = {
     W.bounds = 225; W.road(road, 6);
     const H = (x, z) => { const rd = pathDist(road, x, z)[0], cd = cityD(x, z), rv = Math.abs(z - rc(x)); const m = smooth(5, 30, rd) * smooth(0, 26, cd) * smooth(10, 40, rv); return 0.4 + (fbm(x * 0.01, z * 0.01) * 3 - 1.5) * smooth(0, 22, cd) * smooth(4, 20, rd) * smooth(12, 30, rv) + (fbm(x * 0.022 + 5, z * 0.022) * 22 - 7) * m - smooth(17, 5, rv) * 3.7 + smooth(160, 250, Math.hypot(x, z)) * 30; };
     W.terrain({ size: 600, seg: 200, height: H, color: (x, z, h, sl) => { const rd = pathDist(road, x, z)[0], cd = cityD(x, z); if (h < -0.4) return 0x8a8468; if (rd < 2.8 + fbm(x * 0.3, z * 0.3)) return 0xa89a7a; if (cd < 0) return 0xb4aa94; if (sl > 0.55) return 0x8a846e; return new THREE.Color(0x7f9a4e).lerp(new THREE.Color(0x9aa558), fbm(x * 0.03, z * 0.03)).getHex(); } });
+    W.horizon({ color: 0x7d8a5a, height: 85, seed: 11 });
     W.water(-0.7, { size: [640, 64], pos: [0, 80], ampScale: 0.12 });
     W.cityWalls(-71, -164, 71, -32, 6.5, [{ side: 's', at: 0.5, width: 6 }], 0xc4bca8);
     W.street(0, -38, 0, -72, 8, 'greek'); W.street(-24, -76, -24, -110, 6, 'greek', { sides: [1] }); W.street(-64, -132, 64, -132, 6, 'greek'); W.street(-62, -56, -12, -56, 6, 'greek', { sides: [1] }); W.street(12, -56, 62, -56, 6, 'greek', { sides: [1] });

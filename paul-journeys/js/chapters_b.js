@@ -17,6 +17,7 @@ const athens = {
       return 9 * smooth(31, 13, dA) * (1 + (fbm(x * 0.2, z * 0.2) - 0.5) * 0.25 * smooth(12, 16, dA)) + 34 * smooth(78, 40, dC) * (1 + (fbm(x * 0.1, z * 0.1) - 0.5) * 0.3 * smooth(36, 44, dC)) + 4 * smooth(42, 22, dT) + smooth(190, 290, r) * 44 * (0.4 + fbm(x * 0.012, z * 0.012)) + (fbm(x * 0.03, z * 0.03) - 0.5) * 1.6 * smooth(70, 100, Math.hypot(x, z)) * smooth(34, 44, dA) * smooth(80, 95, dC); };
     W.bounds = 250; W.road([[0, -78], [0, -30], [0, 60], [-22, 78], [-26, 96], [-10, 104]], 5);
     W.terrain({ size: 640, seg: 210, cz: 60, height: H, color: (x, z, h, sl) => { const dA = Math.hypot(x - AR[0], z - AR[1]), dC = Math.hypot((x - AC[0]) / 1.5, z - AC[1]); if (dA < 31 || (dC < 78 && sl > 0.25)) return sl > 0.3 ? 0x9a9488 : 0xb4ac9c; if (Math.abs(x) < 46 && Math.abs(z) < 52) return 0xc8bea4; if (W.roadDist(x, z) < 0) return 0xb8ac90; if (sl > 0.5) return 0x9a9280; return new THREE.Color(0x9a9a5c).lerp(new THREE.Color(0x7a8c4c), fbm(x * 0.03, z * 0.03)).getHex(); } });
+    W.horizon({ color: 0x8f8a6a, height: 75, seed: 5 });
     W.stoa(54, 0, 80, -Math.PI / 2, { depth: 7, h: 5.6 }); W.temple(-64, -8, Math.PI / 2, { w: 12, d: 24, h: 6.5, nf: 6, ns: 11 });
     W.temple(AC[0], AC[1], Math.PI / 2, { w: 17, d: 36, h: 9.5, nf: 8, ns: 15 }); W.temple(AC[0] - 38, AC[1] - 12, 0.3, { w: 7, d: 11, h: 5, nf: 4, ns: 5 });
     W.street(-66, -66, 66, -66, 7, 'greek'); W.street(-70, 44, -44, 44, 6, 'greek', { sides: [-1] }); W.street(60, 60, 110, 60, 6, 'greek');
@@ -99,6 +100,7 @@ const ephesus = {
     const H = (x, z) => { const dT = Math.hypot(x - TH[0], z - TH[1]); return 0.6 + smooth(-2, -72, z) * 23 * smooth(R + 2, R + 13, dT) * (0.85 + 0.3 * fbm(x * 0.03, z * 0.03)) + (fbm(x * 0.02, z * 0.02) - 0.5) * 5 * smooth(40, 80, Math.abs(x)) * smooth(-20, 20, z) - smooth(176, 200, z) * 7 + smooth(170, 260, Math.hypot(x, z - 40)) * smooth(150, 60, z) * 30; };
     W.bounds = 235; W.road([[0, 176], [0, 8]], 14);
     W.terrain({ size: 620, seg: 200, cz: 40, height: H, color: (x, z, h, sl) => { if (h < -0.2) return 0x9a9478; if (Math.abs(x) < 7.4 && z > 6 && z < 178) return 0xcfc8b6; if (Math.abs(x) < 60 && z > -4 && z < 178) return 0xb4aa92; if (sl > 0.5) return 0x8f8a78; return new THREE.Color(0x8c9054).lerp(new THREE.Color(0x6f844a), fbm(x * 0.03, z * 0.03)).getHex(); } });
+    W.horizon({ color: 0x7f8a5c, height: 80, seed: 9, arcs: [[Math.PI / 2 + 0.95, Math.PI * 2.5 - 0.95]] });
     W.water(-0.6);
     const th = W.theatre(TH[0], TH[1], 0, { r0: 12, R, rows: 17, rise: 0.62 }); W.addCircle(TH[0], TH[1], R + 3.2, 60); W.colliders[W.colliders.length - 1].nocam = true;
     W.street(0, 172, 0, 24, 26, 'greek', { tall: true, gap: 1 }); W.street(-70, 60, -30, 60, 6, 'greek'); W.street(30, 110, 70, 110, 6, 'greek');
@@ -180,6 +182,7 @@ const jerusalem = {
     const road = ROAD7; W.bounds = 420; W.mapR = 400; W.road(road, 8);
     const H = (x, z) => { const rd = pathDist(road, x, z)[0], fa = smooth(75, 45, Math.hypot(x, z - 30)), fb = smooth(60, 34, Math.hypot(x, z + 698)); return z * 0.03 + (fbm(x * 0.012, z * 0.012) * 44 - 15) * smooth(6, 44, rd) * (1 - fa) * (1 - fb) + (fbm(x * 0.06, z * 0.06) - 0.5) * 1.5 * smooth(5, 14, rd) * (1 - fa) * (1 - fb); };
     W.terrain({ size: 900, seg: 240, cz: -330, height: H, color: (x, z, h, sl) => { const rd = pathDist(road, x, z)[0]; if (rd < 3.6 + fbm(x * 0.3, z * 0.3)) return 0x9a8c70; if (Math.hypot(x, z - 30) < 60 || Math.hypot(x, z + 698) < 40) return 0xb0a488; if (sl > 0.5) return 0x8a8470; return new THREE.Color(0x9a9462).lerp(new THREE.Color(0x768650), fbm(x * 0.03, z * 0.03)).getHex(); } });
+    W.horizon({ color: 0x9a9068, height: 90, seed: 13 });
     // the Antonia fortress and the stairs
     W.cityWalls(-42, 16, 42, 76, 11, [{ side: 'n', at: 0.5, width: 6 }], 0xc8bc9c);
     W.box(0, -0.08, 8, 12, 2.5, 12, 0xcfc4a8); W.addPlatform(0, 8, 6, 6, 0, 2.42);

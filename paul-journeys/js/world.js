@@ -81,6 +81,74 @@ function makeMatte(side) {
   return m;
 }
 export const MATTE = () => (_matte ||= makeMatte(THREE.FrontSide));
+// Ground: the vertex colours give each region its soil (sand, dust, grass, road); the shader adds what a camera would see
+// up close — patchy colour, fine grit and pebbles, rock strata on steep ground, compacted wheel ruts on roads, darker damp
+// soil at the water's edge and after rain — and turns it into surface relief so low sun rakes across it.
+export const terrainU = { uWaterLevel: { value: -1e4 } };
+let _terrain = null;
+export const TERRAIN = () => {
+  if (_terrain) return _terrain;
+  const m = _terrain = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0 }); m.userData.shared = true;
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uWet = matteU.uWet; sh.uniforms.uWaterLevel = terrainU.uWaterLevel;
+    sh.vertexShader = 'attribute vec2 soil;\nvarying vec3 vWPos; varying vec3 vWNrm; varying vec2 vSoil;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+      '#include <begin_vertex>\n vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz; vWNrm = normalize(mat3(modelMatrix) * objectNormal); vSoil = soil;');
+    sh.fragmentShader = `uniform float uWet, uWaterLevel; varying vec3 vWPos; varying vec3 vWNrm; varying vec2 vSoil;
+      float th21(vec2 p){ p = fract(p * vec2(233.34, 851.73)); p += dot(p, p + 23.45); return fract(p.x * p.y); }
+      float tn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(th21(i), th21(i + vec2(1, 0)), f.x), mix(th21(i + vec2(0, 1)), th21(i + vec2(1, 1)), f.x), f.y); }
+      float tfbm(vec2 p){ return tn(p) * 0.5 + tn(p * 2.07 + 3.1) * 0.25 + tn(p * 4.13 + 7.7) * 0.125 + tn(p * 8.21 + 1.3) * 0.0625; }
+      // pebbles: one stone per cell at a random spot and size
+      float pebble(vec2 p){ vec2 i = floor(p), f = fract(p); float r = th21(i); vec2 c = vec2(th21(i + 17.0), th21(i + 41.0)) * 0.6 + 0.2;
+        float s = 0.07 + 0.13 * th21(i + 5.0), d = length(f - c) / s; return step(0.8, r) * sqrt(max(0.0, 1.0 - d * d)); } // a rounded stone
+      // height of the fine relief at a point, used both for shading and colour
+      float relief(vec2 p, float road, float rock){
+        float h = tn(p * 1.3) * 0.5 + tn(p * 3.7) * 0.3 + tn(p * 9.1) * 0.2;
+        h += pebble(p * 2.2) * 0.9 + pebble(p * 5.3 + 9.0) * 0.5;
+        h += rock * (sin(vWPos.y * 3.1 + tfbm(p * 0.35) * 5.0) * 0.6 + tn(p * 2.0) * 0.8);
+        return h * (1.0 - road * 0.65);
+      }
+      ` + sh.fragmentShader
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        vec2 gp = vWPos.xz; float camD = length(vWPos - cameraPosition);
+        float nearF = 1.0 - smoothstep(18.0, 120.0, camD), mid = 1.0 - smoothstep(80.0, 420.0, camD);
+        float road = vSoil.x, rock = smoothstep(0.3, 0.75, vSoil.y + (tfbm(gp * 0.08) - 0.5) * 0.35);
+        vec3 c = diffuseColor.rgb;
+        float macro = tfbm(gp * 0.011), ptch = tfbm(gp * 0.07 + 4.0), grit = tn(gp * 3.7) * 0.6 + tn(gp * 11.0) * 0.4;
+        c *= 0.84 + 0.32 * macro;
+        c = mix(c, c * vec3(1.07, 0.97, 0.85), smoothstep(0.52, 0.72, ptch) * mid);     // sun-bleached / iron-rich patches
+        c = mix(c, c * vec3(0.9, 0.92, 0.95), smoothstep(0.45, 0.25, ptch) * mid * 0.6);
+        c *= mix(1.0, 0.8 + 0.4 * grit, nearF);
+        float green = clamp((diffuseColor.g - max(diffuseColor.r, diffuseColor.b)) * 6.0, 0.0, 1.0); // fewer stones in grass
+        float pb = (pebble(gp * 2.2) + pebble(gp * 5.3 + 9.0) * 0.6) * (1.0 - road * 0.7) * (1.0 - green * 0.85) * nearF;
+        vec3 cg = vec3(dot(c, vec3(0.3, 0.45, 0.25)));
+        vec3 stone = mix(cg * vec3(0.92, 0.86, 0.78), cg * vec3(1.02, 1.0, 0.96), 0.5) * mix(0.62, 1.08, th21(floor(gp * 2.2) + 3.0));
+        c = mix(c, stone, smoothstep(0.05, 0.4, pb) * 0.75);
+        vec3 rockC = vec3(0.56, 0.51, 0.44) * (0.7 + 0.45 * tfbm(vec2(gp.x + gp.y, vWPos.y * 2.0) * 0.6)) * (0.88 + 0.18 * nearF * sin(vWPos.y * 3.1 + tfbm(gp * 0.35) * 5.0)); // strata, faded with distance to avoid shimmer
+        c = mix(c, rockC, rock);
+        // roads: two compacted wheel ruts along the way and a lighter, dusty crown
+        float rut = road * nearF * 0.5 * (smoothstep(0.35, 0.5, tn(gp * 0.9)) * 0.3 + 0.2);
+        c *= 1.0 - rut * 0.25;
+        // damp ground at the water's edge, and after rain
+        float wet = max(1.0 - smoothstep(0.0, 0.9, vWPos.y - uWaterLevel), uWet * (0.6 + 0.4 * tn(gp * 0.25)));
+        c *= 1.0 - 0.38 * wet;
+        diffuseColor.rgb = c;`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        roughnessFactor = mix(0.97, 0.88, rock);
+        roughnessFactor = mix(roughnessFactor, 0.3, wet * 0.8);`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        {
+          float e = 0.035, amp = (0.025 + 0.06 * rock) * nearF;
+          if (amp > 0.0005) {
+            float h0 = relief(gp, road, rock), hx = relief(gp + vec2(e, 0.0), road, rock), hz = relief(gp + vec2(0.0, e), road, rock);
+            vec3 nW = normalize(vWNrm - vec3((hx - h0) / e, 0.0, (hz - h0) / e) * amp);
+            normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
+          }
+        }`);
+  };
+  m.customProgramCacheKey = () => 'terrain-v2';
+  return m;
+};
 export const MATTE2 = () => (_matte2 ||= makeMatte(THREE.DoubleSide));
 export const SKIN = () => { if (!_skin) { _skin = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82 }); _skin.userData.shared = true; } return _skin; };
 
@@ -142,6 +210,7 @@ function vegGeos() {
   oak.blob(0, 5.4, 0, 2.3, 0x3f6a32, 1.15, 0.9, 1.1).blob(1.7, 4.6, 0.5, 1.6, 0x4a7638, 1, 0.85, 1, 1).blob(-1.6, 4.7, -0.4, 1.7, 0x38602e, 1, 0.85, 1, 2).blob(0.2, 4.5, -1.6, 1.5, 0x44703a, 1, 0.8, 1, 3);
   const bush = S(); bush.blob(0, 0.45, 0, 0.7, 0x5c7446, 1.2, 0.75, 1.1).blob(0.5, 0.35, 0.2, 0.45, 0x6a8050, 1, 0.8, 1, 1);
   const rock = S(); rock.add(new THREE.DodecahedronGeometry(0.8, 0), 0x8f8676, 0, 0.3, 0, 0.3, 0.5, 0.2, 1.2, 0.7, 1);
+  const pebble = S(); pebble.add(new THREE.DodecahedronGeometry(1, 0), 0x9a907e, 0, 0.25, 0, 0.2, 0.4, 0.1, 1.3, 0.55, 1);
   const tuft = new THREE.BufferGeometry(); {
     const pos = [], uv = [], nrm = [], col = [];
     for (let b = 0; b < 5; b++) {
@@ -152,7 +221,7 @@ function vegGeos() {
     tuft.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); tuft.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
     tuft.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); tuft.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   }
-  return { palm: palm.geometry(), cypress: cypress.geometry(), olive: olive.geometry(), oak: oak.geometry(), bush: bush.geometry(), rock: rock.geometry(), tuft };
+  return { pebble: pebble.geometry(), palm: palm.geometry(), cypress: cypress.geometry(), olive: olive.geometry(), oak: oak.geometry(), bush: bush.geometry(), rock: rock.geometry(), tuft };
 }
 
 // ---------------------------------------------------------------- world
@@ -165,6 +234,7 @@ export class World {
     this.updaters = []; this.terrainFn = () => 0; this.waterLevel = null; this.bounds = 240;
     this.inst = {}; this.flames = []; this.lights = [];
     this.roads = [];
+    terrainU.uWaterLevel.value = -1e4;
   }
   terrainH(x, z) { return this.terrainFn(x, z); }
   // ground height under a walker currently at height y (platforms only count if within stepping reach)
@@ -220,16 +290,18 @@ export class World {
   // ---- terrain
   terrain({ size = 600, seg = 220, height, color, cx = 0, cz = 0 }) {
     this.terrainFn = height; this.cx = cx; this.cz = cz; this.terrainSize = size;
+    seg = Math.min(360, Math.round(seg * 1.45)); // finer ground: about 2 m between vertices in most chapters
     const g = new THREE.PlaneGeometry(size, size, seg, seg); g.rotateX(-Math.PI / 2); g.translate(cx, 0, cz);
-    const p = g.attributes.position, col = new Float32Array(p.count * 3), c = new THREE.Color();
+    const p = g.attributes.position, col = new Float32Array(p.count * 3), soil = new Float32Array(p.count * 2), c = new THREE.Color();
     for (let i = 0; i < p.count; i++) {
       const x = p.getX(i), z = p.getZ(i), h = height(x, z); p.setY(i, h);
       const e = 1.5, slope = Math.hypot(height(x + e, z) - h, height(x, z + e) - h) / e;
       c.set(color(x, z, h, slope)); const n = 0.92 + 0.16 * noise2(x * 0.7, z * 0.7);
       col[i * 3] = c.r * n; col[i * 3 + 1] = c.g * n; col[i * 3 + 2] = c.b * n;
+      soil[i * 2] = this.roads.length ? smooth(1.5, -1.0, this.roadDist(x, z)) : 0; soil[i * 2 + 1] = Math.min(1, slope / 1.4);
     }
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
-    const m = new THREE.Mesh(g, MATTE()); m.receiveShadow = true; this.group.add(m); this.terrainMesh = m; return m;
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('soil', new THREE.BufferAttribute(soil, 2)); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, TERRAIN()); m.receiveShadow = true; this.group.add(m); this.terrainMesh = m; return m;
   }
 
   // sea or river whose shallows and surf follow the terrain
@@ -237,7 +309,7 @@ export class World {
     const N = 256, size = this.terrainSize, data = new Uint8Array(N * N * 4);
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const h = this.terrainFn(this.cx + (i / (N - 1) - 0.5) * size, this.cz + (j / (N - 1) - 0.5) * size); data[(j * N + i) * 4] = Math.max(0, Math.min(255, (h + 12) / 16 * 255)); data[(j * N + i) * 4 + 3] = 255; }
     const tex = new THREE.DataTexture(data, N, N, THREE.RGBAFormat); tex.magFilter = tex.minFilter = THREE.LinearFilter; tex.needsUpdate = true;
-    this.waterLevel = level; return this.engine.addWater(level, { ...opts, hmap: tex, hrect: [this.cx, this.cz, size] });
+    this.waterLevel = level; if (!opts.size) terrainU.uWaterLevel.value = level; return this.engine.addWater(level, { ...opts, hmap: tex, hrect: [this.cx, this.cz, size] });
   }
   // ---- instanced props
   _inst(kind, x, y, z, s = 1, ry = 0, sy = s, color = null) {
@@ -429,8 +501,39 @@ export class World {
   road(pts, width, color) { this.roads.push({ pts, width, color }); }
   roadDist(x, z) { let d = 1e9; for (const r of this.roads) d = Math.min(d, pathDist(r.pts, x, z)[0] - r.width / 2); return d; }
 
+  // distant hills beyond the playable ground, so the land runs on to the horizon instead of ending at the map's edge.
+  // arcs: [[fromAngle, toAngle], …] in radians (0 = +x, π/2 = +z); leave out the seaward side on coasts.
+  horizon({ arcs = [[0, Math.PI * 2]], height = 70, color = 0x9c9070, seed = 3 } = {}) {
+    const R0 = this.terrainSize / 2 - 6, R1 = R0 + 1100, nA = 160, nR = 14, pos = [], col = [], idx = [], c0 = new THREE.Color(color);
+    for (const [a0, a1] of arcs) {
+      const base = pos.length / 3;
+      for (let i = 0; i <= nA; i++) {
+        const a = a0 + (a1 - a0) * i / nA;
+        for (let j = 0; j <= nR; j++) {
+          const t = j / nR, r = R0 + (R1 - R0) * Math.pow(t, 1.6), x = this.cx + Math.cos(a) * r, z = this.cz + Math.sin(a) * r;
+          const ridge = fbm(Math.cos(a) * 4 + seed, Math.sin(a) * 4 + seed * 2, 5), edge = this.terrainFn(this.cx + Math.cos(a) * R0, this.cz + Math.sin(a) * R0);
+          const hgt = j === 0 ? edge - 2 : lerp(edge, height * (0.35 + 1.1 * ridge) * (0.5 + 0.5 * Math.sin(t * Math.PI * 0.9)) + fbm(x * 0.01, z * 0.01, 3) * 25, smooth(0, 0.25, t));
+          pos.push(x, hgt, z); const k = 0.82 + 0.3 * fbm(x * 0.02, z * 0.02, 3); col.push(c0.r * k, c0.g * k, c0.b * k);
+        }
+      }
+      for (let i = 0; i < nA; i++) for (let j = 0; j < nR; j++) { const a = base + i * (nR + 1) + j, b = a + nR + 1; idx.push(a, a + 1, b, b, a + 1, b + 1); }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 })); m.receiveShadow = true; this.group.add(m); return m;
+  }
+  // small stones strewn over open ground (no shadows: too small to matter, too many to afford)
+  pebbles(n = 7000) {
+    const r = this.rand, R = Math.min(this.bounds, this.terrainSize / 2 - 4);
+    for (let i = 0, tries = 0; i < n && tries < n * 4; tries++) {
+      const a = r() * Math.PI * 2, d = Math.sqrt(r()) * R, x = (this.cx || 0) + Math.cos(a) * d, z = (this.cz || 0) + Math.sin(a) * d, h = this.terrainFn(x, z);
+      if ((this.waterLevel !== null && h < this.waterLevel + 0.3) || this.roadDist(x, z) < 0.5 || this.ground(x, z) > h + 0.05 || this.blocked(x, 1, z)) continue;
+      i++; const s = r.range(0.05, 0.22) * (r() < 0.08 ? 2.2 : 1); this._inst('pebble', x, h - s * 0.15, z, s, r() * 6.28, s * r.range(0.6, 1.1));
+    }
+  }
+
   // ---- finish: bake static geometry, build instanced vegetation and flames
   finish() {
+    if (this.terrainMesh && !this.noPebbles) this.pebbles(this.terrainSize > 1000 ? 9000 : 7000);
     const stat = this.S.mesh(MATTE()); stat.name = 'static'; this.group.add(stat);
     const V = vegGeos(), dummy = new THREE.Object3D();
     const treeMat = windify(new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide }), 'tree', 1);
@@ -438,9 +541,9 @@ export class World {
     const grassMat = windify(new THREE.MeshLambertMaterial({ vertexColors: true }), 'grass', 1);
     for (const kind in this.inst) {
       const list = this.inst[kind], geo = V[kind];
-      const mesh = new THREE.InstancedMesh(geo, kind === 'tuft' ? grassMat : kind === 'rock' ? rockMat : treeMat, list.length);
+      const mesh = new THREE.InstancedMesh(geo, kind === 'tuft' ? grassMat : (kind === 'rock' || kind === 'pebble') ? rockMat : treeMat, list.length);
       list.forEach((o, i) => { dummy.position.set(o.x, o.y, o.z); dummy.rotation.set(0, o.ry, 0); dummy.scale.set(o.s, o.sy, o.s); dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix); if (o.color !== null) mesh.setColorAt(i, _c.set(o.color)); });
-      mesh.castShadow = kind !== 'tuft'; mesh.receiveShadow = true; mesh.frustumCulled = false; this.group.add(mesh);
+      mesh.castShadow = kind !== 'tuft' && kind !== 'pebble'; mesh.receiveShadow = true; mesh.frustumCulled = false; this.group.add(mesh);
     }
     for (const k in V) if (!this.inst[k]) V[k].dispose();
     // flames: instanced emissive teardrops that flicker

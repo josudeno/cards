@@ -4,6 +4,21 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+
+// final look: gentle filmic contrast, a touch of warmth in the highlights and a soft vignette
+const GradeShader = {
+  uniforms: { tDiffuse: { value: null }, uVignette: { value: 0.28 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uVignette; varying vec2 vUv;
+    void main(){ vec4 c = texture2D(tDiffuse, vUv); vec3 x = c.rgb;
+      x = mix(x, x * x * (3.0 - 2.0 * x), 0.22);                       // S-curve
+      float l = dot(x, vec3(0.299, 0.587, 0.114));
+      x = mix(x, x * vec3(1.03, 1.0, 0.95), smoothstep(0.45, 1.0, l));   // warm highlights
+      x = mix(x, x * vec3(0.96, 0.99, 1.04), 1.0 - smoothstep(0.0, 0.35, l)); // cool shadows
+      vec2 d = vUv - 0.5; x *= 1.0 - uVignette * smoothstep(0.25, 0.85, dot(d, d) * 2.2);
+      gl_FragColor = vec4(x, c.a); }`,
+};
 
 const C = (h) => new THREE.Color(h);
 
@@ -233,6 +248,11 @@ export class Engine {
     }));
     this.sky.renderOrder = -10; this.sky.frustumCulled = false;
     this.scene.add(this.sky);
+    // image-based light: the sky (sun glow, clouds, horizon colour) is captured into an environment map so that
+    // every surface is lit by the sky around it, not only by the sun and a flat ambient
+    this.pmrem = new THREE.PMREMGenerator(r); this.envScene = new THREE.Scene();
+    this.envScene.add(new THREE.Mesh(this.sky.geometry, this.sky.material));
+    this.envKey = ''; this.envAge = 99; this.envRT = null; this.fogBase = new THREE.Color();
 
     this._makeRain(); this._makeMotes();
     this.world = new THREE.Group(); this.scene.add(this.world);
@@ -261,6 +281,7 @@ export class Engine {
       this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.3, 0.6, 0.92);
       this.composer.addPass(this.bloom);
       this.composer.addPass(new OutputPass());
+      this.composer.addPass(this.grade = new ShaderPass(GradeShader));
     }
     this.resize();
   }
@@ -380,10 +401,10 @@ export class Engine {
     const el = e.sunElev * D, az = e.sunAzim * D;
     this.sunDir.set(Math.cos(el) * Math.sin(az), Math.sin(el), Math.cos(el) * Math.cos(az)).normalize();
     this.sun.color.copy(e.sunColor); this.sun.intensity = e.sunInt * (1 + e.glory * 2);
-    this.hemi.color.copy(e.hemiSky); this.hemi.groundColor.copy(e.hemiGround); this.hemi.intensity = e.hemiInt * (1 + e.glory * 3);
+    this.hemi.color.copy(e.hemiSky); this.hemi.groundColor.copy(e.hemiGround); this.hemi.intensity = e.hemiInt * 0.62 * (1 + e.glory * 3); this.scene.environmentIntensity = 0.55 + e.glory * 1.5;
     const flash = this.flashPow;
     this.scene.fog.color.copy(e.fog).lerp(C(0xffffff), Math.min(1, e.glory * 0.9 + flash * 0.25));
-    this.scene.fog.density = e.fogDensity;
+    this.scene.fog.density = e.fogDensity; this.fogBase.copy(this.scene.fog.color);
     const s = this.skyU;
     s.uTop.value.copy(e.skyTop); s.uHorizon.value.copy(e.skyHorizon);
     s.uSunColor.value.copy(e.sunColor).multiplyScalar(Math.min(e.sunInt, 3) / 3);
@@ -426,6 +447,14 @@ export class Engine {
       this.flashLight.position.set(Math.sin(this.time * 7), 1, Math.cos(this.time * 5));
     } else this.flashPow = 0;
     this.applyEnv();
+    // refresh the sky light when the weather or time of day has changed (at most every 1.5 s)
+    const e = this.env, key = [e.sunElev, e.sunAzim, e.sunInt, e.cloud, e.stars, e.glory].map((v) => v.toFixed(1)).join() + e.skyTop.getHexString() + e.skyHorizon.getHexString();
+    this.envAge += dt;
+    if (key !== this.envKey && this.envAge > 1.5) {
+      this.envKey = key; this.envAge = 0; const prev = this.skyU.uFlash.value; this.skyU.uFlash.value = 0;
+      const rt = this.pmrem.fromScene(this.envScene, 0, 0.1, 3000); this.skyU.uFlash.value = prev;
+      if (this.envRT) this.envRT.dispose(); this.envRT = rt; this.scene.environment = rt.texture;
+    }
     // shadow frustum follows the focus point, snapped to shadow texels to avoid shimmer
     const S = this.shadowExtent, texel = (2 * S) / this.sun.shadow.mapSize.x;
     const f = this.focus;
@@ -443,6 +472,11 @@ export class Engine {
       if (this.shakeT <= 0) this.shakeAmt = 0;
     }
     this.sky.position.copy(cam.position);
+    // aerial perspective: haze looking toward a low sun glows with its colour
+    { const f = cam.getWorldDirection(this._fwd || (this._fwd = new THREE.Vector3())); const toSun = Math.max(0, f.x * this.sunDir.x + f.z * this.sunDir.z) / Math.max(0.2, Math.hypot(this.sunDir.x, this.sunDir.z));
+      const k = Math.pow(toSun, 3) * (1 - THREE.MathUtils.smoothstep(this.env.sunElev, 10, 60)) * 0.45 * Math.min(1, this.env.sunInt / 2) * (1 - this.env.cloud * 0.7);
+      this.scene.fog.color.copy(this.fogBase).lerp(this._sunTint || (this._sunTint = new THREE.Color()).copy(this.env.sunColor).multiplyScalar(1.15), k);
+      for (const w of this.waters) w.u.uFog.value.copy(this.scene.fog.color); }
     this.rainU.uCam.value.copy(cam.position); this.moteU.uCam.value.copy(cam.position);
     this.moteU.uScale.value = window.innerHeight * this.renderer.getPixelRatio() * 0.9;
     if (this.composer) this.composer.render(dt); else this.renderer.render(this.scene, this.camera);
