@@ -8,7 +8,7 @@ const HAIRS = [0x1c1612, 0x2a1e14, 0x3a2a1c, 0x14100c, 0x6a6660, 0xb8b4ac];
 const ROBES = [0xd8ccb0, 0xb89a70, 0x8a6a4a, 0x9a4a34, 0x5a6a84, 0x6a7a54, 0xc8b490, 0x7a5a6a, 0xe6dcc8, 0xa8845a, 0x4a5a6a, 0x8a7a5a];
 
 // joint targets: hips (lL,lR), knees (kL,kR), shoulders (aL,aR + aLz,aRz), elbows (eL,eR), body height y, pitch, head nod (hx)
-const POSES = {
+export const POSES = {
   idle: {}, walk: {},
   sit: { y: -0.6, lL: -1.2, lR: -1.1, kL: 1.9, kR: 1.75, aL: -0.75, aR: -0.7, eL: -0.6, eR: -0.7, pitch: 0.14 },
   stocks: { y: -0.84, lL: -1.5, lR: -1.5, aL: 0.25, aR: 0.25, eL: -0.2, eR: -0.2, pitch: -0.1 },
@@ -31,7 +31,7 @@ const POSES = {
   carry: { aL: -0.7, aR: -0.7, aLz: -0.15, aRz: 0.15, eL: -1.3, eR: -1.3 },
   work: { aL: -0.9, aR: -0.9, eL: -1.1, eR: -1.1, pitch: 0.18, hx: 0.3 },
 };
-const J0 = { y: 0, pitch: 0, hx: 0, aL: 0, aR: 0, aLz: 0.07, aRz: -0.07, eL: -0.22, eR: -0.22, lL: 0, lR: 0, lLz: 0, lRz: 0, kL: 0, kR: 0 };
+export const J0 = { y: 0, pitch: 0, hx: 0, aL: 0, aR: 0, aLz: 0.07, aRz: -0.07, eL: -0.22, eR: -0.22, lL: 0, lR: 0, lLz: 0, lRz: 0, kL: 0, kR: 0 };
 
 export function personLook(r, kind = 'man') {
   const o = { skin: r.pick(SKINS), hair: r.pick(HAIRS), robe: r.pick(ROBES), sash: r.pick([0x6a4a2a, 0x8a3a2a, 0x3a4a6a, 0xc8a050, 0x4a3a2a]), beard: r() < 0.75, head: r() < 0.45 ? 'cloth' : 'bare', long: r() < 0.4, cloak: r() < 0.35 ? r.pick(ROBES) : null, height: r.range(0.94, 1.06), build: r.range(0.92, 1.1) };
@@ -141,6 +141,10 @@ export class Person {
       } else this.speed = 0;
       let dy = this.yaw - g.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); g.rotation.y += dy * Math.min(1, dt * 8);
     }
+    this.animate(dt, t);
+  }
+  animate(dt, t) {
+    const j = this.j, g = this.group;
     const P = POSES[this.pose] || POSES.idle, k = Math.min(1, dt * 7), T = { ...J0, ...P }, upright = this.pose === 'idle' || this.pose === 'walk' || this.pose === 'grope' || this.pose === 'hold' || this.pose === 'carry';
     if (this.speed > 0.05 && upright) {
       const run = this.speed > 4.6, amp = Math.min(this.look.long ? 0.5 : 0.85, 0.32 + this.speed * 0.085);

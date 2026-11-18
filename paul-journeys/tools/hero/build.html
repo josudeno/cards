@@ -1,0 +1,35 @@
+<!DOCTYPE html><html><body style="margin:0;background:#556">
+<script type="importmap">{"imports":{"three":"./three/three.module.js","three/addons/":"./three/addons/"}}</script>
+<script type="module">
+// Builds paul.glb: Rocketbox Male_Adult_21 (MIT) re-dressed, with motion-capture clips, scaled to metres.
+import * as THREE from 'three';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+const L = new FBXLoader(), tl = new THREE.TextureLoader();
+const load = (u) => new Promise((res, rej) => L.load(u, res, undefined, rej));
+const tex = (f, srgb) => new Promise((res) => tl.load('paul/' + f, (t) => { if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.userData.mimeType = 'image/jpeg'; t.name = f; res(t); }));
+// name: [file, start s, end s]
+const CLIPS = { idle: ['m_idle_neutral_01', 0, 7], walk: ['m_walk_neutral_01'], slow: ['m_walk_slow_01'], run: ['m_run_neutral_01'], talk: ['m_gestic_talk_neutral_01', 2, 12], crouch: ['m_crouch_idle', 0, 4], cheer: ['m_cheer_01', 0, 5] };
+const FACE = /Eye|Lip|Mouth|Cheek|Jaw|Nose|Brow|brow|Masseter|Caninus|Tongue/;
+(async () => {
+  const o = await load('assets/Male_Adult_21.fbx'); const info = { clips: {} };
+  const [bc, bn, hc, hn, cc, cn] = await Promise.all([tex('paul_body_color.jpg', 1), tex('paul_body_normal.jpg'), tex('paul_head_color.jpg', 1), tex('paul_head_normal.jpg'), tex('paul_cloth_color.jpg', 1), tex('paul_cloth_normal.jpg')]);
+  let mesh; o.traverse((c) => { if (c.isSkinnedMesh) mesh = c; });
+  mesh.name = 'paul'; mesh.material = [].concat(mesh.material).map((m) => { const n = m.name;
+    const [map, nrm, nm] = n.includes('head') ? [hc, hn, 'skin'] : n.includes('keff') ? [cc, cn, 'cloth'] : [bc, bn, 'body'];
+    return new THREE.MeshStandardMaterial({ name: nm, map, normalMap: nrm, roughness: nm === 'skin' ? 0.62 : 0.92, metalness: 0, side: nm === 'cloth' ? THREE.DoubleSide : THREE.FrontSide }); });
+  // clips: same Bip01 skeleton, so tracks bind directly; keep rotations (+ hip position for bob), drop scale tracks
+  const clips = [];
+  for (const [k, [f, t0, t1]] of Object.entries(CLIPS)) {
+    const a = await load('anims/' + f + '.max.fbx'); let c = a.animations[0];
+    if (t1) c = THREE.AnimationUtils.subclip(c, k, Math.round(t0 * 30), Math.round(t1 * 30), 30); c.name = k;
+    c.tracks = c.tracks.filter((t) => !FACE.test(t.name)).filter((t) => t.name.endsWith('.quaternion') || (t.name.endsWith('.position') && /Pelvis|Bip01\.position|^Bip01_Pelvis/.test(t.name)) );
+    c.optimize();
+    info.clips[k] = { dur: +c.duration.toFixed(2), tracks: c.tracks.length }; clips.push(c);
+  }
+  o.animations = clips; o.scale.setScalar(0.01); o.name = 'PaulRoot';
+  info.bones = []; o.traverse((c) => { if (c.isBone) info.bones.push(c.name); });
+  const glb = await new GLTFExporter().parseAsync(o, { binary: true, animations: clips, onlyVisible: false });
+  window.__glb = Array.from(new Uint8Array(glb)); info.size = glb.byteLength; window.__info = info; window.__ready = true;
+})().catch((e) => { window.__info = { err: String(e.stack || e) }; window.__ready = true; });
+</script></body></html>

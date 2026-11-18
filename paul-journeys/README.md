@@ -2,7 +2,7 @@
 
 A third-person, open-area 3D game that runs in the browser and follows the apostle Paul through the book of Acts — from the road to Damascus to the shipwreck on Malta.
 
-No build step, no external assets, no network calls at runtime: everything (terrain, towns, ships, people, weather, sound) is generated in code on top of a vendored copy of three.js.
+No build step and no network calls at runtime. Paul is a realistic, motion-captured character from the open-source Microsoft Rocketbox library (`assets/paul.glb`); everything else (terrain, towns, ships, the other people, weather, sound) is generated in code on top of a vendored copy of three.js.
 
 ## Languages
 
@@ -65,7 +65,8 @@ Each completed category earns a **crown** (1 Corinthians 9:25). Everything earns
 
 - `js/engine.js` — renderer, sky, sun and soft shadows, wind (grass, trees, cloth, sails), rain, lightning, bloom, ocean.
 - `js/world.js` — terrain, vegetation, first-century architecture, the merchant ship.
-- `js/characters.js` — articulated people and animals, procedurally animated.
+- `js/hero.js` — Paul: a realistic motion-captured character (Microsoft Rocketbox, MIT — see `assets/CREDITS.md`), with story poses layered on the real skeleton; falls back to the built-in figure if the model cannot load.
+- `js/characters.js` — the other people and the animals, procedurally animated.
 - `js/player.js` — input, camera, and movement on foot, swimming, on deck, at the helm and on horseback.
 - `js/game.js`, `js/tasks.js`, `js/ui.js`, `js/audio.js` — game loop, scripting API, tasks and rewards, HUD, procedural sound.
 - `js/chapters_a.js`, `js/chapters_b.js` — the eight chapters.
@@ -77,4 +78,5 @@ Each completed category earns a **crown** (1 Corinthians 9:25). Everything earns
 
 - Game code: same licence as this repository.
 - three.js (in `vendor/`): MIT, © three.js authors — see `vendor/LICENSE`.
+- Paul's model and animations: Microsoft Rocketbox Avatar Library, MIT, © 2020 Microsoft — see `assets/CREDITS.md`.
 - Scripture: World English Bible and Reina-Valera (1909), both public domain. The Spanish verses come from the Scrollmapper open Bible databases (`SpaRV.json`); regenerate them with `node tools/build-es-scripture.mjs <SpaRV.json>`.

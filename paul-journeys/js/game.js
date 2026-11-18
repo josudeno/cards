@@ -10,6 +10,7 @@ import { CHAPTERS } from './chapters.js';
 import { q } from './common.js';
 import { SIDE, GREETINGS, RANKS, MANTLES, XP, rankOf } from './tasks.js';
 import { PAUL } from './characters.js';
+import { preloadHero } from './hero.js';
 import { I, t, sc, tNote, refLabel, version, versionName, cityName, setLang, initialLang, applyStatic, isEs } from './i18n.js';
 
 const CANCEL = Symbol('cancel');
@@ -248,7 +249,7 @@ class Game {
     inp.endFrame();
   }
 }
-try { window.__game = new Game(); } catch (e) {
+preloadHero().then(() => { try { window.__game = new Game(); } catch (e) {
   console.error(e); const l = document.getElementById('loading'); l.classList.remove('hidden');
   const msg = '<h3>This journey needs WebGL</h3><p class="help">Your browser or device could not start 3D graphics. Try a recent version of Chrome, Edge, Firefox or Safari, and make sure hardware acceleration is turned on.</p>'; l.querySelector('.panel').innerHTML = t(msg);
-}
+} });

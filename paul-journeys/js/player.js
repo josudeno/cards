@@ -1,6 +1,7 @@
 // Input handling, third-person camera, and the movement modes: on foot, swimming, on a ship's deck, at the helm, on horseback.
 import * as THREE from 'three';
 import { Person, PAUL } from './characters.js';
+import { makePaul } from './hero.js';
 import { lerp } from './world.js';
 
 export class Input {
@@ -35,14 +36,14 @@ export class Input {
 export class Player {
   constructor(engine, input) {
     this.engine = engine; this.input = input; this.world = null;
-    this.person = new Person(PAUL, null); this.person.auto = false;
+    this.person = makePaul(null); this.person.auto = false;
     this.pos = new THREE.Vector3(); this.yaw = 0; this.vy = 0; this.onGround = true;
     this.mode = 'foot'; this.locked = false; this.speedMul = 1; this.canRun = true;
     this.camYaw = 0; this.camPitch = 0.28; this.camDist = 5.2; this.camCur = 5.2; this.camMax = 9; this.camTarget = new THREE.Vector3(); this.ceil = null;
     this.ship = null; this.horse = null; this.throttle = 0; this.swimming = false; this.stepT = 0; this.onStep = null;
     this.local = new THREE.Vector3(); // deck-local position
   }
-  rebuild() { const old = this.person, par = old.group.parent; const n = new Person(PAUL, old.world); n.auto = old.auto; n.pos.copy(old.pos); n.group.rotation.copy(old.group.rotation); n.yaw = old.yaw; n.pose = old.pose; if (par) { par.remove(old.group); par.add(n.group); } this.person = n; }
+  rebuild() { const old = this.person, par = old.group.parent; const n = makePaul(old.world); n.auto = old.auto; n.pos.copy(old.pos); n.group.rotation.copy(old.group.rotation); n.yaw = old.yaw; n.pose = old.pose; if (par) { par.remove(old.group); par.add(n.group); } this.person = n; }
   setWorld(world) { this.world = world; this.person.world = world; this.mode = 'foot'; this.locked = false; this.speedMul = 1; this.ship = this.horse = null; this.ceil = null; this.camMax = 9; this.camDist = 5.2; this.swimming = false; this.person.auto = false; this.person.fixedY = false; this.person.setPose('idle'); world.group.add(this.person.group); }
   teleport(x, z, yaw = 0) { this.pos.set(x, this.world.ground(x, z), z); this.yaw = yaw; this.vy = 0; this.person.pos.copy(this.pos); this.person.yaw = yaw; this.person.group.rotation.y = yaw; this.camYaw = yaw + Math.PI; this.snapCam = true; }
   // hand control of Paul's body to a script (NPC-style walking) or back to the player
@@ -65,7 +66,7 @@ export class Player {
       this.swimming = wl !== null && g0 < wl - 1.2;
       let spd = 0;
       if (ml > 0.05) {
-        spd = (this.swimming ? 2.4 : (inp.run() && this.canRun ? 6.8 : 3.8)) * this.speedMul * Math.min(1, ml);
+        spd = (this.swimming ? 2.4 : (inp.run() && this.canRun ? 6.4 : 2.8)) * this.speedMul * Math.min(1, ml);
         this.pos.x += dx * spd * dt; this.pos.z += dz * spd * dt;
         let dy = Math.atan2(dx, dz) - this.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); this.yaw += dy * Math.min(1, dt * 11);
       }
