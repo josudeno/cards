@@ -33,8 +33,22 @@ export const POSES = {
 };
 export const J0 = { y: 0, pitch: 0, hx: 0, aL: 0, aR: 0, aLz: 0.07, aRz: -0.07, eL: -0.22, eR: -0.22, lL: 0, lR: 0, lLz: 0, lRz: 0, kL: 0, kR: 0 };
 
+// woven wool with bands of colour, as on travellers' mantles and saddle blankets (cached per palette)
+const _stripes = new Map();
+export function stripeTexture(seed = 1) {
+  const pal = [[0xd8c8a4, 0x5a3a28, 0x8a3a2a, 0x2a2018], [0xc8b08a, 0x3a2a20, 0x6a4a2a, 0xa8845a], [0xe2d6b8, 0x4a3828, 0x7a5a3a, 0x9a3a2a], [0xb89a70, 0x2a2018, 0x5a4a3a, 0xd8c8a4]][Math.abs(seed | 0) % 4];
+  const key = pal.join(); if (_stripes.has(key)) return _stripes.get(key);
+  const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d'), col = (h) => '#' + h.toString(16).padStart(6, '0');
+  g.fillStyle = col(pal[0]); g.fillRect(0, 0, 64, 256);
+  const bands = [[20, 10, 1], [34, 3, 2], [40, 3, 3], [120, 16, 1], [140, 4, 2], [200, 10, 1], [214, 3, 3]];
+  for (const [y, h, k] of bands) { g.fillStyle = col(pal[k]); g.fillRect(0, y, 64, h); }
+  for (let i = 0; i < 2600; i++) { g.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '0,0,0'},0.06)`; g.fillRect(Math.random() * 64, Math.random() * 256, 1 + Math.random() * 2, 1); } // weave
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.userData.shared = true; _stripes.set(key, t); return t;
+}
+
 export function personLook(r, kind = 'man') {
   const o = { skin: r.pick(SKINS), hair: r.pick(HAIRS), robe: r.pick(ROBES), sash: r.pick([0x6a4a2a, 0x8a3a2a, 0x3a4a6a, 0xc8a050, 0x4a3a2a]), beard: r() < 0.75, head: r() < 0.45 ? 'cloth' : 'bare', long: r() < 0.4, cloak: r() < 0.35 ? r.pick(ROBES) : null, height: r.range(0.94, 1.06), build: r.range(0.92, 1.1) };
+  if (o.cloak && r() < 0.5) o.stripes = 1 + Math.floor(r() * 4); // many mantles were woven with coloured bands
   if (kind === 'woman') Object.assign(o, { beard: false, head: 'veil', long: true, cloak: null, height: r.range(0.9, 0.98), build: r.range(0.85, 0.95), woman: true });
   if (kind === 'greek') Object.assign(o, { head: 'bare', robe: r.pick([0xece4d2, 0xe0d4bc, 0xd8c8a8, 0xc8d0d8, 0xd8b890]), long: r() < 0.7, cloak: r() < 0.5 ? r.pick([0xb8a888, 0x8a5a4a, 0x5a6a84, 0xd8ccb0]) : null });
   if (kind === 'soldier') Object.assign(o, { beard: false, head: 'helmet', long: false, robe: 0x8a2c22, armor: true, cloak: null, sash: 0x4a3420, height: 1.03, build: 1.08 });
@@ -112,7 +126,7 @@ export class Person {
     for (const sd of [1, -1]) { const U = new Solid(); limb(U, th, 0.085 * B, 0.058 * B, L.long ? legC : shade(robe, 0.92), legC, L.long ? 1 : 0.35); const p = new THREE.Group(); p.position.set(sd * 0.092 * B, 0.93, 0); p.add(U.mesh(mat));
       const F = new Solid(); limb(F, sn, 0.056 * B, 0.036, legC, skin, L.long ? 0.8 : 0.0001); F.sphere(0, -sn - 0.03, 0.055, 0.05, skin, 0.8, 0.5, 1.9, 8); F.box(0, -sn - 0.065, 0.055, 0.092, 0.018, 0.25, 0x4a3420); F.box(0, -sn - 0.03, 0.09, 0.094, 0.012, 0.02, 0x4a3420); F.box(0, -sn - 0.012, 0.0, 0.085, 0.012, 0.085, 0x4a3420); if (L.armor) F.cyl(0, -sn + 0.04, 0.012, 0.04, 0.052, 0.3, 0x9a9ea2, 8);
       const k = new THREE.Group(); k.position.y = -th; k.add(F.mesh(mat)); p.add(k); body.add(p); this.legs.push(p); this.knees.push(k); }
-    if (L.cloak) { const w = L.armor ? 0.5 : 0.36, cg = new THREE.PlaneGeometry(w, L.armor ? 1.05 : 0.9, 5, 8); cg.translate(0, L.armor ? -0.52 : -0.45, 0); const cm = new THREE.Mesh(cg, windify(new THREE.MeshStandardMaterial({ color: L.cloak, side: THREE.DoubleSide, roughness: 1 }), 'cloth', 0.2)); cm.position.set(L.armor ? 0 : sh * 0.55, 1.43, -0.155 * B); cm.rotation.x = 0.08; cm.rotation.y = Math.PI; cm.castShadow = true; body.add(cm); }
+    if (L.cloak) { const w = L.armor ? 0.5 : 0.36, cg = new THREE.PlaneGeometry(w, L.armor ? 1.05 : 0.9, 5, 8); cg.translate(0, L.armor ? -0.52 : -0.45, 0); const cm = new THREE.Mesh(cg, windify(new THREE.MeshStandardMaterial({ color: L.stripes ? 0xffffff : L.cloak, map: L.stripes ? stripeTexture(L.stripes) : null, side: THREE.DoubleSide, roughness: 1 }), 'cloth', 0.2)); cm.position.set(L.armor ? 0 : sh * 0.55, 1.43, -0.155 * B); cm.rotation.x = 0.08; cm.rotation.y = Math.PI; cm.castShadow = true; body.add(cm); }
     g.scale.setScalar(L.height || 1);
     this.pose = 'idle'; this.phase = Math.random() * 6; this.speed = 0; this.j = { ...J0 };
     this.path = null; this.follow = null; this.yaw = 0; this.name = look.name || ''; this.auto = true; this.tremble = 0; this.rad = 0.35; this.lookAt = null; this.headYaw = 0;

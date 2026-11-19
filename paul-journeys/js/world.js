@@ -102,17 +102,22 @@ export const TERRAIN = () => {
       float pebble(vec2 p){ vec2 i = floor(p), f = fract(p); float r = th21(i); vec2 c = vec2(th21(i + 17.0), th21(i + 41.0)) * 0.6 + 0.2;
         float s = 0.07 + 0.13 * th21(i + 5.0), d = length(f - c) / s; return step(0.8, r) * sqrt(max(0.0, 1.0 - d * d)); } // a rounded stone
       // height of the fine relief at a point, used both for shading and colour
+      // dressed limestone flagstones in courses, for city streets
+      vec3 flags(vec2 p){ vec2 q = p / vec2(0.95, 0.62); float row = floor(q.y); q.x += th21(vec2(row, 3.0)) * 0.9 + row * 0.5;
+        vec2 f = fract(q), id = floor(q); float edge = min(min(f.x, 1.0 - f.x) * 0.95, min(f.y, 1.0 - f.y) * 0.62);
+        return vec3(smoothstep(0.015, 0.05, edge), th21(id), th21(id + 7.0)); } // (inside stone 0..1, random, random)
       float relief(vec2 p, float road, float rock){
         float h = tn(p * 1.3) * 0.5 + tn(p * 3.7) * 0.3 + tn(p * 9.1) * 0.2;
         h += pebble(p * 2.2) * 0.9 + pebble(p * 5.3 + 9.0) * 0.5;
         h += rock * (sin(vWPos.y * 3.1 + tfbm(p * 0.35) * 5.0) * 0.6 + tn(p * 2.0) * 0.8);
-        return h * (1.0 - road * 0.65);
+        float pv = clamp(vSoil.x - 1.0, 0.0, 1.0); if (pv > 0.0) { vec3 fl = flags(p); h = mix(h, fl.x * 0.8 + fl.y * 0.15 + tn(p * 7.0) * 0.1, pv); }
+        return h * (1.0 - road * 0.65 * (1.0 - pv));
       }
       ` + sh.fragmentShader
       .replace('#include <color_fragment>', `#include <color_fragment>
         vec2 gp = vWPos.xz; float camD = length(vWPos - cameraPosition);
         float nearF = 1.0 - smoothstep(18.0, 120.0, camD), mid = 1.0 - smoothstep(80.0, 420.0, camD);
-        float road = vSoil.x, rock = smoothstep(0.3, 0.75, vSoil.y + (tfbm(gp * 0.08) - 0.5) * 0.35);
+        float paved = clamp(vSoil.x - 1.0, 0.0, 1.0), road = min(vSoil.x, 1.0), rock = smoothstep(0.3, 0.75, vSoil.y + (tfbm(gp * 0.08) - 0.5) * 0.35);
         vec3 c = diffuseColor.rgb;
         float macro = tfbm(gp * 0.011), ptch = tfbm(gp * 0.07 + 4.0), grit = tn(gp * 3.7) * 0.6 + tn(gp * 11.0) * 0.4;
         c *= 0.84 + 0.32 * macro;
@@ -128,7 +133,9 @@ export const TERRAIN = () => {
         c = mix(c, rockC, rock);
         // roads: two compacted wheel ruts along the way and a lighter, dusty crown
         float rut = road * nearF * 0.5 * (smoothstep(0.35, 0.5, tn(gp * 0.9)) * 0.3 + 0.2);
-        c *= 1.0 - rut * 0.25;
+        c *= 1.0 - rut * 0.25 * (1.0 - paved);
+        if (paved > 0.0) { vec3 fl = flags(gp); vec3 stoneC = vec3(0.6, 0.56, 0.49) * (0.72 + 0.4 * fl.y) * (0.85 + 0.2 * tn(gp * 3.0)) * (0.9 + 0.15 * tfbm(gp * 0.2)); stoneC = mix(stoneC * 0.55, stoneC, fl.x);
+          c = mix(c, stoneC, paved); }
         // damp ground at the water's edge, and after rain
         float wet = max(1.0 - smoothstep(0.0, 0.9, vWPos.y - uWaterLevel), uWet * (0.6 + 0.4 * tn(gp * 0.25)));
         c *= 1.0 - 0.38 * wet;
@@ -140,6 +147,7 @@ export const TERRAIN = () => {
         {
           float e = 0.035, amp = (0.025 + 0.06 * rock) * nearF;
           if (amp > 0.0005) {
+            amp *= 1.0 + paved * 0.6;
             float h0 = relief(gp, road, rock), hx = relief(gp + vec2(e, 0.0), road, rock), hz = relief(gp + vec2(0.0, e), road, rock);
             vec3 nW = normalize(vWNrm - vec3((hx - h0) / e, 0.0, (hz - h0) / e) * amp);
             normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
@@ -209,8 +217,13 @@ function vegGeos() {
   const oak = S(); oak.cyl(0, 0, 0, 0.25, 0.42, 3.4, 0x4d3c2c, 7);
   oak.blob(0, 5.4, 0, 2.3, 0x3f6a32, 1.15, 0.9, 1.1).blob(1.7, 4.6, 0.5, 1.6, 0x4a7638, 1, 0.85, 1, 1).blob(-1.6, 4.7, -0.4, 1.7, 0x38602e, 1, 0.85, 1, 2).blob(0.2, 4.5, -1.6, 1.5, 0x44703a, 1, 0.8, 1, 3);
   const bush = S(); bush.blob(0, 0.45, 0, 0.7, 0x5c7446, 1.2, 0.75, 1.1).blob(0.5, 0.35, 0.2, 0.45, 0x6a8050, 1, 0.8, 1, 1);
-  const rock = S(); rock.add(new THREE.DodecahedronGeometry(0.8, 0), 0x8f8676, 0, 0.3, 0, 0.3, 0.5, 0.2, 1.2, 0.7, 1);
-  const pebble = S(); pebble.add(new THREE.DodecahedronGeometry(1, 0), 0x9a907e, 0, 0.25, 0, 0.2, 0.4, 0.1, 1.3, 0.55, 1);
+  // weathered boulder: a subdivided sphere pushed about by noise, flattened, with darker cracks in the vertex colour
+  const boulder = (r0, seed) => { const g = new THREE.IcosahedronGeometry(r0, 2), p = g.attributes.position, col = new Float32Array(p.count * 3), v = new THREE.Vector3();
+    for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); const n = fbm(v.x * 2.1 + seed, v.y * 2.1 + v.z * 1.7, 3), k = 0.72 + 0.55 * n; v.multiplyScalar(k); v.y *= 0.62; if (v.y < -0.1) v.y *= 0.4; p.setXYZ(i, v.x, v.y, v.z);
+      const c = 0.78 + 0.32 * fbm(v.x * 6 + seed, v.z * 6, 2), cc = new THREE.Color().setRGB(0.62 * c, 0.58 * c, 0.5 * c, THREE.SRGBColorSpace); col.set([cc.r, cc.g, cc.b], i * 3); }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals(); return g; };
+  const rock = S(); rock.add(boulder(0.8, 3), 0xffffff, 0, 0.32, 0, 0.3, 0.5, 0.2, 1.25, 0.75, 1);
+  const pebble = S(); pebble.add(boulder(1, 7), 0xffffff, 0, 0.25, 0, 0.2, 0.4, 0.1, 1.3, 0.55, 1);
   const tuft = new THREE.BufferGeometry(); {
     const pos = [], uv = [], nrm = [], col = [];
     for (let b = 0; b < 5; b++) {
@@ -298,7 +311,7 @@ export class World {
       const e = 1.5, slope = Math.hypot(height(x + e, z) - h, height(x, z + e) - h) / e;
       c.set(color(x, z, h, slope)); const n = 0.92 + 0.16 * noise2(x * 0.7, z * 0.7);
       col[i * 3] = c.r * n; col[i * 3 + 1] = c.g * n; col[i * 3 + 2] = c.b * n;
-      soil[i * 2] = this.roads.length ? smooth(1.5, -1.0, this.roadDist(x, z)) : 0; soil[i * 2 + 1] = Math.min(1, slope / 1.4);
+      soil[i * 2] = this.roadSoil(x, z); soil[i * 2 + 1] = Math.min(1, slope / 1.4);
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('soil', new THREE.BufferAttribute(soil, 2)); g.computeVertexNormals();
     const m = new THREE.Mesh(g, TERRAIN()); m.receiveShadow = true; this.group.add(m); this.terrainMesh = m; return m;
@@ -498,13 +511,17 @@ export class World {
     this.addCircle(x, z, 0.75 * size, y + 1.5);
     return [this.flame(x, y + 0.45, z, 2.2 * size, true), this.flame(x + 0.15, y + 0.3, z + 0.1, 1.5 * size, false), this.flame(x - 0.15, y + 0.3, z - 0.1, 1.4 * size, false)];
   }
-  road(pts, width, color) { this.roads.push({ pts, width, color }); }
+  road(pts, width, color, opts = {}) { this.roads.push({ pts, width, color, paved: !!opts.paved }); }
+  // 0 = open ground, 1 = beaten earth road, 2 = paved street (smoothly blended at the edges)
+  roadSoil(x, z) { let v = 0; for (const r of this.roads) { const k = smooth(1.5, -1.0, pathDist(r.pts, x, z)[0] - r.width / 2); v = Math.max(v, k * (r.paved ? 2 : 1)); } return v; }
   roadDist(x, z) { let d = 1e9; for (const r of this.roads) d = Math.min(d, pathDist(r.pts, x, z)[0] - r.width / 2); return d; }
 
   // distant hills beyond the playable ground, so the land runs on to the horizon instead of ending at the map's edge.
   // arcs: [[fromAngle, toAngle], …] in radians (0 = +x, π/2 = +z); leave out the seaward side on coasts.
-  horizon({ arcs = [[0, Math.PI * 2]], height = 70, color = 0x9c9070, seed = 3 } = {}) {
-    const R0 = this.terrainSize / 2 - 6, R1 = R0 + 1100, nA = 160, nR = 14, pos = [], col = [], idx = [], c0 = new THREE.Color(color);
+  // peaks: [[angle, half-width (rad), height (m)], …] raise named ranges; snow: height above which the slopes turn white
+  horizon({ arcs = [[0, Math.PI * 2]], height = 70, color = 0x9c9070, seed = 3, peaks = [], snow = 1e9, rock = null } = {}) {
+    if (rock !== null) rock = new THREE.Color(rock);
+    const R0 = this.terrainSize / 2 - 6, R1 = R0 + 1100, nA = 220, nR = 18, pos = [], col = [], idx = [], c0 = new THREE.Color(color);
     for (const [a0, a1] of arcs) {
       const base = pos.length / 3;
       for (let i = 0; i <= nA; i++) {
@@ -512,15 +529,55 @@ export class World {
         for (let j = 0; j <= nR; j++) {
           const t = j / nR, r = R0 + (R1 - R0) * Math.pow(t, 1.6), x = this.cx + Math.cos(a) * r, z = this.cz + Math.sin(a) * r;
           const ridge = fbm(Math.cos(a) * 4 + seed, Math.sin(a) * 4 + seed * 2, 5), edge = this.terrainFn(this.cx + Math.cos(a) * R0, this.cz + Math.sin(a) * R0);
-          const hgt = j === 0 ? edge - 2 : lerp(edge, height * (0.35 + 1.1 * ridge) * (0.5 + 0.5 * Math.sin(t * Math.PI * 0.9)) + fbm(x * 0.01, z * 0.01, 3) * 25, smooth(0, 0.25, t));
-          pos.push(x, hgt, z); const k = 0.82 + 0.3 * fbm(x * 0.02, z * 0.02, 3); col.push(c0.r * k, c0.g * k, c0.b * k);
+          let pk = 0; for (const [pa, pw, ph] of peaks) { let da = Math.atan2(Math.sin(a - pa), Math.cos(a - pa)); pk = Math.max(pk, ph * Math.exp(-(da * da) / (pw * pw)) * smooth(0.3, 0.85, t) * (0.65 + 0.7 * fbm(a * 14 + seed, t * 4, 5))); }
+          const hgt = j === 0 ? edge - 2 : lerp(edge, height * (0.35 + 1.1 * ridge) * (0.5 + 0.5 * Math.sin(t * Math.PI * 0.9)) + fbm(x * 0.01, z * 0.01, 3) * 25 + pk, smooth(0, 0.25, t));
+          pos.push(x, hgt, z); const k = 0.82 + 0.3 * fbm(x * 0.02, z * 0.02, 3);
+          let cr = c0.r * k, cg = c0.g * k, cb = c0.b * k;
+          if (rock && hgt > height * 0.9) { const rk = smooth(height * 0.9, height * 2.2, hgt); cr = lerp(cr, rock.r * k, rk); cg = lerp(cg, rock.g * k, rk); cb = lerp(cb, rock.b * k, rk); }
+          const sn = smooth(snow - 40, snow + 30, hgt + (fbm(x * 0.03, z * 0.03, 3) - 0.5) * 60); cr = lerp(cr, 0.93, sn); cg = lerp(cg, 0.94, sn); cb = lerp(cb, 0.97, sn);
+          col.push(cr, cg, cb);
         }
       }
       for (let i = 0; i < nA; i++) for (let j = 0; j < nR; j++) { const a = base + i * (nR + 1) + j, b = a + nR + 1; idx.push(a, a + 1, b, b, a + 1, b + 1); }
     }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals();
-    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 })); m.receiveShadow = true; this.group.add(m); return m;
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, side: THREE.DoubleSide })); m.receiveShadow = false; this.group.add(m); return m;
   }
+  // dry-stone field wall: irregular unmortared stones along a line, with a gap every `gapEvery` metres
+  drywall(x1, z1, x2, z2, h = 0.8, gapEvery = 0) {
+    const r = this.rand, dx = x2 - x1, dz = z2 - z1, L = Math.hypot(dx, dz), ry = Math.atan2(dx, dz);
+    let segStart = 0;
+    for (let d = 0; d < L; ) {
+      if (gapEvery && d - segStart > gapEvery) { const g0 = d; d += 3.2; segStart = d; const mx = x1 + dx / L * (g0 - 0.2), mz = z1 + dz / L * (g0 - 0.2); continue; }
+      const w = r.range(0.45, 0.9), x = x1 + dx / L * (d + w / 2), z = z1 + dz / L * (d + w / 2), y = this.terrainFn(x, z);
+      for (let k = 0, hy = 0; hy < h - 0.1; k++) { const sh = r.range(0.2, 0.34); this.S.add(new THREE.DodecahedronGeometry(0.5, 0), jit(r.pick([0xb8aa8c, 0xc4b696, 0xa89c82, 0xcdbf9f]), r, 0.1), x + r.range(-0.08, 0.08), y + hy + sh * 0.45, z + r.range(-0.08, 0.08), r() * 3, ry + r.range(-0.4, 0.4), r() * 3, r.range(0.5, 0.66), sh, w * r.range(0.95, 1.2)); hy += sh * 0.85; }
+      d += w * 0.95;
+    }
+    // colliders for each run between gaps
+    const runs = gapEvery ? Math.ceil(L / (gapEvery + 3.2)) : 1;
+    for (let i = 0; i < runs; i++) { const a = i * (gapEvery + 3.2), b = Math.min(L, a + (gapEvery || L)), m = (a + b) / 2; this.addBox(x1 + dx / L * m, z1 + dz / L * m, 0.35, (b - a) / 2, ry, this.terrainFn(x1 + dx / L * m, z1 + dz / L * m) + h); }
+  }
+  // stone-lined irrigation channel (axis-aligned): the terrain function should already dip along it
+  channel(x1, z1, x2, z2, width = 1.2, level = null) {
+    const cx = (x1 + x2) / 2, cz = (z1 + z2) / 2, along = Math.abs(x2 - x1) > Math.abs(z2 - z1), L = along ? Math.abs(x2 - x1) : Math.abs(z2 - z1);
+    const y = level ?? (Math.min(this.terrainFn(x1, z1), this.terrainFn(x2, z2), this.terrainFn(cx, cz)) - 0.15);
+    const w = this.engine.addWater(y, { size: along ? [L, width] : [width, L], pos: [cx, cz], ampScale: 0.03 }); w.u.uFoam.value = 0;
+    for (const sd of [-1, 1]) { const ox = along ? 0 : sd * (width / 2 + 0.18), oz = along ? sd * (width / 2 + 0.18) : 0; this.S.box(cx + ox, y - 0.5, cz + oz, along ? L : 0.36, 0.72, along ? 0.36 : L, 0xb3a68c); }
+    return y;
+  }
+  // a wooden water-lifting wheel turning in a channel
+  waterwheel(x, z, ry = 0, R = 3.2, y = null) {
+    const g = new THREE.Group(), S = new Solid(), wood = 0x6a5038; y = y ?? this.terrainFn(x, z) - 0.6;
+    for (const sd of [-0.45, 0.45]) { S.add(new THREE.TorusGeometry(R, 0.08, 6, 36), wood, sd, 0, 0, 0, Math.PI / 2, 0); for (let i = 0; i < 12; i++) S.add(new THREE.CylinderGeometry(0.05, 0.05, R * 2, 5), wood, sd, 0, 0, i * Math.PI / 12, 0, 0); }
+    for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; S.box(0, Math.sin(a) * R - 0.18, Math.cos(a) * R, 1.0, 0.36, 0.3, 0x8a6a48, 0, a); }
+    S.cyl(0, 0, 0, 0.18, 0.18, 1.6, 0x4a3828, 8, 0, Math.PI / 2);
+    const wheel = S.mesh(MATTE2()); g.add(wheel); g.position.set(x, y + R * 0.75, z); g.rotation.y = ry; this.group.add(g);
+    const P = new Solid(); for (const sd of [-0.95, 0.95]) P.box(sd, -R * 0.75 - 0.4, 0, 0.35, R * 0.75 + 0.6, 0.5, 0x8f846c); const posts = P.mesh(MATTE()); g.add(posts);
+    this.updaters.push((dt) => { wheel.rotation.x -= dt * 0.35; });
+    this.addBox(x, z, 1.2, 0.6, ry, y + R * 2);
+    return g;
+  }
+
   // small stones strewn over open ground (no shadows: too small to matter, too many to afford)
   pebbles(n = 7000) {
     const r = this.rand, R = Math.min(this.bounds, this.terrainSize / 2 - 4);

@@ -10,6 +10,14 @@ Changes made for this game (see `tools/hero/`): the robe was re-coloured to undy
 pocket removed, the shoes re-coloured as leather, the patterned head-cloth replaced with plain wool, textures reduced to
 1024 px, clips trimmed, facial-bone tracks dropped, and everything packed into one glTF file in metres.
 
+## `animals.glb` — the camels and donkeys
+
+From the same library: `Assets/Animals/Camel_OneHump_01` and `Assets/Animals/Donkey_Grey_01`, textures reduced to 1024 px
+and packed into one glTF file in metres. The models have no animation clips; the game animates their skeletons itself
+(`js/fauna.js`). Rebuild with `tools/hero/animals_build.html`.
+
+Both files are covered by this licence:
+
 ```
 MIT License
 

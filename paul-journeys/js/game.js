@@ -11,6 +11,7 @@ import { q } from './common.js';
 import { SIDE, GREETINGS, RANKS, MANTLES, XP, rankOf } from './tasks.js';
 import { PAUL } from './characters.js';
 import { preloadHero } from './hero.js';
+import { preloadFauna, faunaReady, Animal } from './fauna.js';
 import { I, t, sc, tNote, refLabel, version, versionName, cityName, setLang, initialLang, applyStatic, isEs } from './i18n.js';
 
 const CANCEL = Symbol('cancel');
@@ -130,6 +131,8 @@ class Game {
       get player() { return G.player; }, get paul() { return G.player.person; }, get world() { return G.world; }, engine: G.engine, ui: G.ui, sound: G.sound, get auto() { return G.autoplay; }, warp: (t) => G.warp(t), game: G, amb: (o) => Object.assign(G.amb, o),
       until: A(until), wait: A(wait),
       spawn(look, x, z, yaw = 0, name = '') { chk(); const p = new Person(look, G.world); p.name = name; p.place(x, z, yaw); p.lookAt = G.player.person; G.world.group.add(p.group); G.npcs.push(p); return p; },
+      faunaReady,
+      animal(kind, x, z, yaw = 0, load = 'none', seed = 1) { chk(); if (!faunaReady()) return null; const a = new Animal(kind, G.world, load, seed); a.place(x, z, yaw); G.world.group.add(a.group); G.beasts.push(a); return a; },
       beast(kind, color, x, z, yaw = 0) { chk(); const b = new Beast(kind, color, G.world); b.pos.set(x, G.world.ground(x, z), z); b.yaw = yaw; b.group.rotation.y = yaw; G.world.group.add(b.group); G.beasts.push(b); return b; },
       say: A(async (lines, opt = {}) => { if (!opt.free) G.player.locked = true; if (G.autoplay) { G.ui.probe(lines); await wait(0.05); } else await G.ui.say(lines); if (!opt.free) G.player.locked = false; }),
       bark(who, text, ref, sec) { chk(); G.ui.bark(who, text, ref, sec); },
@@ -249,7 +252,7 @@ class Game {
     inp.endFrame();
   }
 }
-preloadHero().then(() => { try { window.__game = new Game(); } catch (e) {
+Promise.all([preloadHero(), preloadFauna()]).then(() => { try { window.__game = new Game(); } catch (e) {
   console.error(e); const l = document.getElementById('loading'); l.classList.remove('hidden');
   const msg = '<h3>This journey needs WebGL</h3><p class="help">Your browser or device could not start 3D graphics. Try a recent version of Chrome, Edge, Firefox or Safari, and make sure hardware acceleration is turned on.</p>'; l.querySelector('.panel').innerHTML = t(msg);
 } });

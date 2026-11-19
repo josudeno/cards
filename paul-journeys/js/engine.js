@@ -81,6 +81,8 @@ export function makeEnv(o = {}) {
 }
 export const ENV = {
   noonDesert: () => makeEnv({ sunElev: 72, sunAzim: 25, sunColor: 0xfff3d8, sunInt: 3.0, hemiInt: 0.75, exposure: 0.82, skyTop: 0x1f63c8, skyHorizon: 0xb9cfe0, fog: 0xcfd0c0, fogDensity: 0.0024, cloud: 0.2, hemiGround: 0xb89a6a, wind: 0.5, motes: 0.8, moteColor: 0xf2deb0 }),
+  // clear midday in the Levant: high sun, crisp air (the mountains stay visible through a light haze), a few cumulus
+  levantNoon: () => makeEnv({ sunElev: 64, sunAzim: 200, sunColor: 0xfff2da, sunInt: 3.0, hemiSky: 0xc4d8f2, hemiGround: 0xa08a68, hemiInt: 0.8, exposure: 0.76, skyTop: 0x2a6bc8, skyHorizon: 0xbcd2e6, fog: 0xc6d0d6, fogDensity: 0.00105, cloud: 0.3, cloudColor: 0xffffff, cloudDark: 0xa8b0bc, wind: 0.6, motes: 0.6, moteColor: 0xf2e2bc }),
   seaDay: () => makeEnv({ sunElev: 48, sunAzim: -40, skyTop: 0x2a6ad0, skyHorizon: 0xb5dbf2, fog: 0xb4d6ee, fogDensity: 0.0012, cloud: 0.4, wind: 1.0, windAngle: 3.0, waveAmp: 0.5, motes: 0.1 }),
   golden: () => makeEnv({ sunElev: 20, sunAzim: -70, sunColor: 0xffcf96, sunInt: 3.1, skyTop: 0x3c62a8, skyHorizon: 0xf6c890, fog: 0xeec294, fogDensity: 0.0026, cloud: 0.45, cloudColor: 0xffe2bf, cloudDark: 0xa0788a, hemiSky: 0xc8d4f4, hemiGround: 0x9a8060, hemiInt: 0.95, wind: 0.7, moteColor: 0xffd9a0, motes: 0.7 }),
   windyPlateau: () => makeEnv({ sunElev: 32, sunAzim: 60, sunColor: 0xffe0b0, sunInt: 3.2, skyTop: 0x3a6cbc, skyHorizon: 0xdcd6c0, fog: 0xd8d0b8, fogDensity: 0.003, cloud: 0.6, cloudDark: 0x8a8c98, wind: 1.7, windAngle: 0.3, motes: 1.0, moteColor: 0xe8d6a8 }),

@@ -1,40 +1,136 @@
 // Chapters I–IV: Damascus, Cyprus, Lystra, Philippi.
 import * as THREE from 'three';
 import { ENV, makeEnv } from './engine.js';
-import { fbm, smooth, pathDist, makeShip, lerp } from './world.js';
+import { fbm, smooth, pathDist, pathPoint, makeShip, lerp } from './world.js';
+import { makeCart } from './fauna.js';
 import { dist, look, q, lead, townsfolk, follow } from './common.js';
 
 // ============================================================ I. DAMASCUS
 const damascus = {
   title: 'The Road to Damascus', journey: 'The Calling', ref: 'Acts 9:1-25', place: 'Near Damascus, about noon', route: ['Jerusalem', 'Damascus'], letters: 2, seed: 11,
-  env: ENV.noonDesert,
+  env: ENV.levantNoon,
   intro: `${q('But Saul, still breathing threats and slaughter against the disciples of the Lord, went to the high priest and asked for letters from him to the synagogues of Damascus, that if he found any who were of the Way, whether men or women, he might bring them bound to Jerusalem.', 'Acts 9:1-2')}\n\nYou are Saul of Tarsus. The road north is nearly behind you, and the walls of Damascus are in sight.`,
   outro: `Saul stayed with the disciples at Damascus, and grew in strength.\n\n${q('When many days were fulfilled, the Jews conspired together to kill him, but their plot became known to Saul. They watched the gates both day and night that they might kill him, but his disciples took him by night and let him down through the wall, lowering him in a basket.', 'Acts 9:23-25')}\n\nThe persecutor had become the persecuted.`,
   build(G, W) {
-    const road = [[4, 215], [9, 150], [-5, 95], [4, 40], [0, -20], [0, -80], [0, -196]];
+    // Limestone hill country gives way to the irrigated Ghouta oasis around Damascus; the Anti-Lebanon range stands to the
+    // west and north-west and snow-capped Mount Hermon to the south-west (north is -z, east is +x).
+    const road = [[4, 215], [9, 150], [-5, 95], [4, 40], [0, -20], [0, -78]];
     const cityD = (x, z) => Math.max(Math.abs(x) - 74, Math.abs(z + 140) - 64);
-    W.bounds = 235; W.road(road, 7);
-    const H = (x, z) => { const rd = pathDist(road, x, z)[0], cd = cityD(x, z); const m = smooth(5, 32, rd) * smooth(0, 28, cd); return (fbm(x * 0.008, z * 0.008) * 4 - 2) * smooth(0, 28, cd) + (fbm(x * 0.021 + 3, z * 0.021) * 20 - 7) * m; };
-    W.terrain({ size: 560, seg: 200, height: H, color: (x, z, h, sl) => { const rd = pathDist(road, x, z)[0], cd = cityD(x, z); if (rd < 3.3 + fbm(x * 0.3, z * 0.3)) return cd < 0 ? 0xb8a888 : 0xa8926a; if (cd < 0) return 0xc2ae88; if (sl > 0.45) return 0xa8946e; const oasis = smooth(70, 5, cd) * smooth(0.35, 0.6, fbm(x * 0.04, z * 0.04)); return new THREE.Color(0xd9c59a).lerp(new THREE.Color(0x98a05c), oasis * 0.8).getHex(); } });
-    W.horizon({ color: 0xb8a47c, height: 60 });
-    W.cityWalls(-72, -202, 72, -78, 7.5, [{ side: 's', at: 0.5, width: 6 }]);
+    W.bounds = 235; W.road(road, 6);
+    W.road([[0, -76], [0, -198]], 9, null, { paved: true }); // Straight Street and the cross streets are paved
+    for (const st of [[[-66, -160], [-8, -160]], [[8, -118], [66, -118]], [[10, -172], [66, -172]], [[-66, -104], [-10, -104]]]) W.road(st, 6, null, { paved: true });
+    const oasis = (x, z) => smooth(115, 70, cityD(x, z)) * smooth(75, 35, z);                 // 1 inside the irrigated land
+    const CH_X = [-42, 46], CH_Z = -40;                                                        // irrigation channels
+    const chDist = (x, z) => { let d = 1e9; for (const cx of CH_X) if (z < 52 && z > -76) d = Math.min(d, Math.abs(x - cx)); if (Math.abs(x) > 9 && Math.abs(x) < 150) d = Math.min(d, Math.abs(z - CH_Z)); return d; };
+    const plot = (x, z) => { const i = Math.floor((x + 7) / 22), j = Math.floor((z + 3) / 16); const h = Math.abs(Math.sin(i * 127.1 + j * 311.7) * 43758.5) % 1; return { i, j, kind: h < 0.3 ? 'wheat' : h < 0.48 ? 'barley' : h < 0.66 ? 'veg' : h < 0.86 ? 'orchard' : 'fallow', fx: (x + 7) / 22 - i, fz: (z + 3) / 16 - j }; };
+    const H = (x, z) => {
+      const rd = pathDist(road, x, z)[0], cd = cityD(x, z), o = oasis(x, z), m = smooth(5, 30, rd) * smooth(0, 28, cd);
+      let hills = (fbm(x * 0.013 + 3, z * 0.013) * 26 - 8) + (fbm(x * 0.05, z * 0.05) - 0.5) * 4;      // rolling limestone country
+      const step = 2.2, k = hills / step, fr = k - Math.floor(k); hills = (Math.floor(k) + smooth(0.55, 0.9, fr)) * step * 0.7 + hills * 0.3; // stepped limestone beds
+      let h = (fbm(x * 0.008, z * 0.008) * 3 - 1.5) * smooth(0, 28, cd) + hills * m * (1 - o) + 0.3 * o * (fbm(x * 0.02, z * 0.02) - 0.5);
+      if (o > 0.5) h -= 0.95 * smooth(1.7, 0.7, chDist(x, z));                                    // channel trench
+      return h;
+    };
+    const C = (h) => new THREE.Color(h);
+    W.terrain({ size: 560, seg: 200, height: H, color: (x, z, h, sl) => {
+      const rd = pathDist(road, x, z)[0], cd = cityD(x, z), o = oasis(x, z);
+      if (cd < 0) return 0xbfb49c;
+      if (rd < 3.1 + fbm(x * 0.3, z * 0.3) * 0.8) return 0xb2a284;                                   // beaten earth and gravel
+      if (sl > 0.42) return new THREE.Color(0xb0a690).lerp(C(0x988e7c), fbm(x * 0.1, z * 0.1)).getHex(); // bare limestone ledges
+      const dry = C(0xb4a483).lerp(C(0x8e8c64), smooth(0.42, 0.68, fbm(x * 0.035, z * 0.035)) * 0.75).lerp(C(0xb7a888), smooth(0.5, 0.8, fbm(x * 0.11, z * 0.11)) * 0.5);  // chalky soil, scrub, stony patches
+      if (o < 0.05) return dry.getHex();
+      const p = plot(x, z), edge = Math.min(p.fx, 1 - p.fx, p.fz, 1 - p.fz);
+      let f;
+      if (edge < 0.05 || chDist(x, z) < 2.2) f = C(0x9a8a68);                                         // field banks and channel edges
+      else if (p.kind === 'wheat') f = C(0x86a04c).lerp(C(0x9cae58), fbm(x * 0.2, z * 0.2));
+      else if (p.kind === 'barley') f = C(0xccb468).lerp(C(0xb9a35a), fbm(x * 0.2, z * 0.2));
+      else if (p.kind === 'veg') f = C(0x5f8a3c).lerp(C(0x7a5c40), 0.5 + 0.5 * Math.sin(p.fx * 60));     // rows of greens on dark soil
+      else if (p.kind === 'orchard') f = C(0x8f9c58);
+      else f = C(0x8c7254).multiplyScalar(0.9 + 0.12 * Math.sin(p.fz * 90));                          // ploughed furrows
+      return dry.lerp(f, smooth(0.2, 0.8, o)).getHex();
+    } });
+    W.horizon({ color: 0xa69a7a, rock: 0x8a8478, height: 28, seed: 21, snow: 205,
+      peaks: [[Math.PI * 0.74, 0.42, 300], [Math.PI * 1.0, 0.5, 210], [Math.PI * 1.24, 0.45, 240], [Math.PI * 1.48, 0.3, 110], [Math.PI * 0.55, 0.3, 90]] });
+    // irrigation: stone-lined channels, a turning water-wheel, date palms along the banks
+    for (const cx of CH_X) W.channel(cx, 50, cx, -74, 1.3, -0.42);
+    W.channel(-148, CH_Z, -10, CH_Z, 1.3, -0.42); W.channel(10, CH_Z, 148, CH_Z, 1.3, -0.42);
+    W.waterwheel(-42, 10, Math.PI / 2, 3.0, -0.6);
+    // the oasis: fields of grain and greens, orchards in rows, field walls
+    const r = W.rand;
+    for (let i = -8; i <= 7; i++) for (let j = -8; j <= 4; j++) {
+      const x0 = i * 22 - 7, z0 = j * 16 - 3, cx = x0 + 11, cz = z0 + 8, p = plot(cx, cz);
+      if (oasis(cx, cz) < 0.6 || cityD(cx, cz) < 6 || pathDist(road, cx, cz)[0] < 14 || chDist(cx, cz) < 6) continue;
+      if (p.kind === 'wheat') W.grass(170, x0 + 1.5, z0 + 1.5, x0 + 20.5, z0 + 14.5, (x, z) => chDist(x, z) > 2, [0x8aa64e, 0x9ab25a, 0x7c9a46]);
+      if (p.kind === 'barley') W.grass(170, x0 + 1.5, z0 + 1.5, x0 + 20.5, z0 + 14.5, (x, z) => chDist(x, z) > 2, [0xd2bc70, 0xc8ae60, 0xdcc87e]);
+      if (p.kind === 'veg') for (let k = 0; k < 26; k++) W._inst('bush', x0 + 2 + (k % 9) * 2.2, H(x0 + 2 + (k % 9) * 2.2, z0 + 3 + Math.floor(k / 9) * 4.5), z0 + 3 + Math.floor(k / 9) * 4.5, r.range(0.35, 0.55), r() * 6, r.range(0.4, 0.6));
+      if (p.kind === 'orchard') for (let a = 3; a < 21; a += 6) for (let b = 3; b < 15; b += 6) W.tree(r() < 0.75 ? 'olive' : 'oak', x0 + a + r.range(-0.6, 0.6), z0 + b + r.range(-0.6, 0.6), r() < 0.75 ? 0.75 : 0.5);
+      if (r() < 0.35) W.drywall(x0, z0, x0 + 22, z0, 0.7, 8);
+    }
+    for (const cx of CH_X) for (let z = 46; z > -70; z -= r.range(9, 16)) W.tree('palm', cx + (r() < 0.5 ? -3 : 3), z, 0.95);
+    // dry-stone walls line the road through the farmland, with gaps for field tracks
+    for (const sd of [-1, 1]) { W.drywall(sd * 6.5, 60, sd * 5.5, 30, 0.85, 12); W.drywall(sd * 5.5, 30, sd * 5.5, -66, 0.85, 14); }
+    // limestone hill country: outcrops, scrub, a few olive terraces
+    W.scatter('rock', 320, -230, 40, 230, 230, (x, z) => pathDist(road, x, z)[0] > 8, 1.5);
+    W.scatter('rock', 260, -230, 40, 230, 230, (x, z) => pathDist(road, x, z)[0] > 5, 0.5);
+    W.scatter('rock', 60, -230, -60, 230, 60, (x, z) => pathDist(road, x, z)[0] > 8 && oasis(x, z) < 0.3, 1.2);
+    W.scatter('bush', 420, -230, -60, 230, 230, (x, z) => pathDist(road, x, z)[0] > 6 && cityD(x, z) > 4 && oasis(x, z) < 0.4);
+    W.scatter('olive', 40, -200, 40, 200, 200, (x, z, h) => pathDist(road, x, z)[0] > 10 && h < 14);
+    W.scatter('cypress', 18, -160, -60, 160, 40, (x, z) => cityD(x, z) > 6 && pathDist(road, x, z)[0] > 9 && oasis(x, z) > 0.3 && chDist(x, z) > 4);
+    W.grass(7000, -200, 40, 200, 220, (x, z) => pathDist(road, x, z)[0] > 4.5 && fbm(x * 0.06, z * 0.06) > 0.5, [0xb8ad7a, 0xa8a06e, 0xc4b888]);
+    // Damascus: limestone walls and gates, a planned street grid, houses of stone and plastered brick
+    W.cityWalls(-72, -202, 72, -78, 9, [{ side: 's', at: 0.5, width: 6 }], 0xd6cab0);
+    { const y = W.terrainFn(0, -78); W.S.add(new THREE.TorusGeometry(3.05, 0.42, 6, 18, Math.PI), 0xcfc3a8, 0, y + 6.4, -78, 0, 0, 0, 1, 1, 2.2); } // arched gateway
     const court = (x, z) => x < -4 && x > -26 && Math.abs(z + 135) < 11;
-    W.street(0, -84, 0, -196, 9, 'mud', { skip: court }); W.street(-66, -160, -8, -160, 6, 'mud', { skip: court }); W.street(8, -118, 66, -118, 6, 'mud'); W.street(10, -172, 66, -172, 6, 'mud', { sides: [1] }); W.street(-66, -104, -10, -104, 6, 'mud', { sides: [-1] });
-    for (let z = -92; z > -190; z -= 9) for (const sx of [-4.2, 4.2]) if (!(sx < 0 && Math.abs(z + 135) < 6)) W.column(sx, 0, z, 4.6, 0.3, 0xd8ccb0);
+    W.street(0, -84, 0, -196, 9, 'mud', { skip: court }); W.street(-66, -160, -8, -160, 6, 'stone', { skip: court }); W.street(8, -118, 66, -118, 6, 'stone'); W.street(10, -172, 66, -172, 6, 'mud', { sides: [1] }); W.street(-66, -104, -10, -104, 6, 'mud', { sides: [-1] });
+    for (let z = -92; z > -190; z -= 9) for (const sx of [-4.2, 4.2]) if (!(sx < 0 && Math.abs(z + 135) < 6)) W.column(sx, 0, z, 4.6, 0.3, 0xddd2ba);
+    for (const sx of [-4.2, 4.2]) W.box(sx, W.terrainFn(sx, -140) + 4.6, -140, 0.9, 0.45, 100, 0xddd2ba); // colonnade entablature
     // the house of Judah on Straight Street: an open courtyard
     W.wall(-24, -144, -24, -126, 3.4, 0.6, 0xd6c29a, false); W.wall(-24, -144, -5, -144, 3.4, 0.6, 0xd6c29a, false); W.wall(-24, -126, -5, -126, 3.4, 0.6, 0xd6c29a, false); W.wall(-5, -144, -5, -138, 3.4, 0.6, 0xd6c29a, false); W.wall(-5, -132, -5, -126, 3.4, 0.6, 0xd6c29a, false);
-    W.house(-19.5, -139.5, 7, 7, 3.6, Math.PI / 2, 'mud', { awning: true, doorX: 0 }); W.box(-12, 0, -131, 3, 0.06, 2, 0x8a4a3a); W.pot(-8, -129, 1.2); W.pot(-9.2, -128.6, 0.9); W.tree('palm', -8.5, -141); W.tree('bush', -22, -129);
-    // synagogue
-    const syn = W.temple(38, -146, Math.PI / 2, { w: 11, d: 16, h: 5, nf: 4, ns: 6, color: 0xdccfb0, roof: 0xa8704a });
-    W.stall(6.5, -100, -Math.PI / 2); W.stall(-6.5, -112, Math.PI / 2); W.stall(6.5, -150, -Math.PI / 2);
-    W.scatter('palm', 46, -150, -70, 150, 10, (x, z) => cityD(x, z) > 6 && cityD(x, z) < 60 && pathDist(road, x, z)[0] > 7);
-    W.scatter('palm', 14, -66, -196, 66, -84, (x, z) => !W.blocked(x, 1, z) && Math.abs(x) > 7 && !court(x, z) && W.colliders.every(c => Math.hypot(c.x - x, c.z - z) > Math.max(c.hw || 1, c.hd || 1) + 1.5));
-    W.scatter('rock', 120, -230, -40, 230, 230, (x, z) => pathDist(road, x, z)[0] > 8, 1.2); W.scatter('bush', 90, -230, -60, 230, 230, (x, z) => pathDist(road, x, z)[0] > 6 && cityD(x, z) > 4);
-    W.scatter('olive', 26, -160, -60, 160, 30, (x, z) => cityD(x, z) > 8 && cityD(x, z) < 70 && pathDist(road, x, z)[0] > 9);
-    W.grass(9000, -180, -75, 180, 60, (x, z) => cityD(x, z) > 2 && pathDist(road, x, z)[0] > 4.5 && fbm(x * 0.04, z * 0.04) > 0.4, [0xa8a860, 0x98a05a, 0xb8b070]);
-    W.grass(5000, -200, 40, 200, 220, (x, z) => pathDist(road, x, z)[0] > 4.5 && fbm(x * 0.06, z * 0.06) > 0.55, [0xc8b880, 0xb8a870, 0xd0c088]);
-    const men = [0, 1, 2].map(i => G.spawn(look(40 + i, 'man', { head: 'cloth', long: false }), 2 + i * 1.5, 205, Math.PI));
-    const folk = townsfolk(G, [[3, -95, [3, -125]], [-3, -150, [-3, -110]], [8, -100], [-8, -113], [20, -118, [50, -118]], [2, -170, [2, -185]], [-30, -160, [-12, -160]], [8, -151]], 5);
+    W.house(-19.5, -139.5, 7, 7, 3.6, Math.PI / 2, 'mud', { awning: true, doorX: 0 }); W.box(-12, 0, -131, 3, 0.06, 2, 0x8a4a3a); W.pot(-8, -129, 1.2); W.pot(-9.2, -128.6, 0.9); W.tree('olive', -9, -141, 0.6); W.tree('bush', -22, -129);
+    { const y = W.terrainFn(-14, -131); W.box(-14.2, y, -128.2, 1.2, 0.7, 1.2, 0x9a9282); W.S.cyl(-14.2, y + 0.7, -128.2, 0.45, 0.45, 0.18, 0x8a8272, 12); } // hand-mill
+    // the synagogue: a plain stone hall with a porch, facing the street
+    const synY = W.terrainFn(38, -146); W.house(38, -146, 14, 12, 6, -Math.PI / 2, 'stone', { doorX: 0, color: 0xcfc4ac });
+    for (const dz of [-4.5, -1.5, 1.5, 4.5]) W.column(29.6, synY, -146 + dz, 4.4, 0.3, 0xe0d6c0); W.box(29.6, synY + 4.4, -146, 1.4, 0.4, 11, 0xe0d6c0);
+    // the temple of Jupiter-Hadad rises above the roofs
+    W.temple(-40, -188, 0, { w: 15, d: 22, h: 9, nf: 6, ns: 9, color: 0xe4dac6, roof: 0xa86a48 });
+    // markets along Straight Street
+    for (const [x, z, ry] of [[6.5, -100, -Math.PI / 2], [-6.5, -112, Math.PI / 2], [6.5, -150, -Math.PI / 2], [6.5, -125, -Math.PI / 2], [-6.5, -165, Math.PI / 2], [6.5, -180, -Math.PI / 2], [-6.5, -98, Math.PI / 2]]) W.stall(x, z, ry);
+    for (const [x, z] of [[8.2, -108], [8.6, -109.2], [-8.4, -120], [8.1, -158], [-8.3, -150], [8.4, -172]]) W.pot(x, z, r.range(0.8, 1.3), r.pick([0xb06a3c, 0xa8603a, 0xc08a5a]));
+    for (const [x, z] of [[-8.2, -94], [8.5, -134], [-8.2, -176]]) W.crate(x, z, 0.7);
+    // the people of the road and the city
+    const men = [0, 1, 2].map(i => G.spawn(look(40 + i, 'man', { head: 'cloth', long: false, cloak: [0x6a4a2a, 0x5a3a28, 0x7a5a3a][i], stripes: i + 1 }), 2 + i * 1.5, 205, Math.PI));
+    const folk = townsfolk(G, [[3, -95, [3, -125]], [-3, -150, [-3, -110]], [8, -100], [-8, -113], [20, -118, [50, -118]], [2, -170, [2, -185]], [-30, -160, [-12, -160]], [8, -151], [-2, -188], [3, -140, [3, -165]]], 5);
+    const watch = [-3.6, 3.6].map((x, i) => { const n = G.spawn(look(70 + i, 'man', { head: 'cloth', cloth: 0x4a3a2a, robe: 0x5a4a3a, long: false, cloak: 0x3a2e24, spear: true }), x, -74, 0); n.name = i ? '' : 'Gate watchmen'; n.greetable = false; return n; });
+    const farmers = [[-60, -20, 'work'], [-75, 8, 'work'], [70, -22, 'work'], [88, 4, 'work'], [-24, -58, 'carry'], [30, 22, 'work']].map(([x, z, pose], i) => { const n = G.spawn(look(80 + i, i === 4 ? 'woman' : 'man', { head: 'cloth', long: false, robe: [0x9a8a6a, 0x8a7a5a, 0xa89a78][i % 3] }), x, z, i); n.setPose(pose); return n; });
+    // caravans along the road: camels and donkeys with their drivers, and a cart leaving the city
+    const total = pathPoint(road, 1)[3], gateT = 1 - 3 / total, life = [];
+    const along = (t, lat) => { const [x, z, a] = pathPoint(road, Math.max(0, Math.min(1, t))); return [x + Math.cos(a) * lat, z - Math.sin(a) * lat, a]; };
+    const team = (members, t0, speed, dir) => {
+      const L = { members: members.map(([obj, back, lat]) => ({ obj, back, lat })), t: t0, speed, dir, wait: 0 };
+      L.place = () => { for (const m of L.members) { const [x, z, a] = along(L.t - dir * m.back / total, m.lat); const o = m.obj; o.pos.set(x, W.ground(x, z), z); o.yaw = dir > 0 ? a : a + Math.PI; o.group.rotation.y = o.yaw; } };
+      life.push(L); L.place(); return L;
+    };
+    const A = (kind, load, seed) => G.animal(kind, 0, 0, 0, load, seed);
+    const driver = (seed, opts = {}) => { const n = G.spawn(look(seed, 'man', { head: 'cloth', long: false, cloak: 0x5a3a28, stripes: seed % 4 + 1, ...opts }), 0, 0, 0); n.auto = false; return n; };
+    if (G.faunaReady()) {
+      team([[driver(90), 0, -1.2], [A('camel', 'bales', 1), 1.2, 0.4], [A('camel', 'bales', 2), 5.0, 0.4], [A('camel', 'bales', 3), 8.8, 0.4], [driver(91), 11, -1.1]], 0.08, 1.05, 1);
+      team([[driver(92), 0, 1.0], [A('donkey', 'baskets', 4), 1.5, 0.2], [A('donkey', 'sacks', 5), 4.2, 0.2]], 0.45, 1.15, 1);
+      const cart = makeCartOnRoad(G, W); team([[driver(93, { cloak: null }), 0, -1.0], [cart.donkey, 0.6, 0.1], [cart, 3.0, 0.1]], 0.72, 0.9, -1);
+      team([[A('donkey', 'sacks', 6), 0, 1.2], [driver(94), 1.6, 1.6]], 0.3, 1.1, -1);
+    }
+    W.updaters.push((dt) => {
+      const P = G.player.pos;
+      for (const L of life) {
+        if (L.wait > 0) { L.wait -= dt; continue; }
+        L.t += L.dir * L.speed * dt / total; L.place();
+        for (const m of L.members) { m.obj.speed = L.speed; if (m.obj.roll) m.obj.roll(L.speed * dt); }
+        const done = L.dir > 0 ? L.t > gateT : L.t < 0.02;
+        if (done) { // arrived: start the journey again out of sight
+          const start = L.dir > 0 ? 0.02 : gateT - 0.01, [sx, sz] = along(start, 0);
+          if (Math.hypot(sx - P.x, sz - P.z) > 70) { L.t = start; L.place(); } else { L.wait = 4; for (const m of L.members) m.obj.speed = 0; }
+        }
+      }
+    });
     return { men, folk, syn: [38, -146], synFront: [27, -146] };
   },
   async run(G, S) {
@@ -85,6 +181,13 @@ const damascus = {
     P.poseLock = false; paul.setPose('idle'); P.locked = false;
   },
 };
+
+// a donkey-drawn cart that follows the road as one team member (the cart trails its donkey)
+function makeCartOnRoad(G, W) {
+  const c = makeCart(W, 3), donkey = G.animal('donkey', 0, 0, 0, 'none', 7);
+  W.group.add(c.group); c.pos = c.group.position; c.yaw = 0; c.speed = 0;
+  c.donkey = donkey; return c;
+}
 
 // ============================================================ II. CYPRUS
 const cyprus = {
