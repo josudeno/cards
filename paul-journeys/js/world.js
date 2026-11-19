@@ -314,7 +314,19 @@ export class World {
       soil[i * 2] = this.roadSoil(x, z); soil[i * 2 + 1] = Math.min(1, slope / 1.4);
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('soil', new THREE.BufferAttribute(soil, 2)); g.computeVertexNormals();
-    const m = new THREE.Mesh(g, TERRAIN()); m.receiveShadow = true; this.group.add(m); this.terrainMesh = m; return m;
+    const m = new THREE.Mesh(g, TERRAIN()); m.receiveShadow = true; this.group.add(m); this.terrainMesh = m;
+    // From here on, everything stands on the ground exactly as drawn: sample the mesh's own triangles instead of the
+    // formula (between vertices the two can differ by tens of centimetres on rough ground, which left people floating).
+    const n = seg + 1, x0 = cx - size / 2, z0 = cz - size / 2, step = size / seg, hs = new Float32Array(n * n);
+    for (let i = 0; i < p.count; i++) { const ix = Math.round((p.getX(i) - x0) / step), iz = Math.round((p.getZ(i) - z0) / step); hs[iz * n + ix] = p.getY(i); }
+    const formula = height;
+    this.terrainFn = (x, z) => {
+      const fx = (x - x0) / step, fz = (z - z0) / step, ix = Math.floor(fx), iz = Math.floor(fz);
+      if (ix < 0 || iz < 0 || ix >= seg || iz >= seg) return formula(x, z);
+      const u = fx - ix, v = fz - iz, ha = hs[iz * n + ix], hd = hs[iz * n + ix + 1], hb = hs[(iz + 1) * n + ix], hc = hs[(iz + 1) * n + ix + 1];
+      return u + v <= 1 ? ha + (hd - ha) * u + (hb - ha) * v : hc + (hb - hc) * (1 - u) + (hd - hc) * (1 - v); // the plane's two triangles per cell
+    };
+    return m;
   }
 
   // sea or river whose shallows and surf follow the terrain
