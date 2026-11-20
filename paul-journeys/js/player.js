@@ -44,7 +44,7 @@ export class Player {
     this.local = new THREE.Vector3(); // deck-local position
   }
   rebuild() { const old = this.person, par = old.group.parent; const n = makePaul(old.world); n.auto = old.auto; n.pos.copy(old.pos); n.group.rotation.copy(old.group.rotation); n.yaw = old.yaw; n.pose = old.pose; if (par) { par.remove(old.group); par.add(n.group); } this.person = n; }
-  setWorld(world) { this.world = world; this.person.world = world; this.mode = 'foot'; this.locked = false; this.speedMul = 1; this.ship = this.horse = null; this.ceil = null; this.camMax = 9; this.camDist = 5.2; this.swimming = false; this.person.auto = false; this.person.fixedY = false; this.person.setPose('idle'); world.group.add(this.person.group); }
+  setWorld(world) { this.world = world; this.person.world = world; this.mode = 'foot'; this.locked = false; this.speedMul = 1; this.canRun = true; this.poseLock = false; this.isScripted = false; this.ship = this.horse = null; this.ceil = null; this.camMax = 9; this.camDist = 5.2; this.swimming = false; this.person.auto = false; this.person.fixedY = false; this.person.setPose('idle'); world.group.add(this.person.group); }
   teleport(x, z, yaw = 0) { this.pos.set(x, this.world.ground(x, z), z); this.yaw = yaw; this.vy = 0; this.person.pos.copy(this.pos); this.person.yaw = yaw; this.person.group.rotation.y = yaw; this.camYaw = yaw + Math.PI; this.snapCam = true; }
   // hand control of Paul's body to a script (NPC-style walking) or back to the player
   scripted(on) { this.person.auto = on; if (!on) { this.pos.copy(this.person.pos); this.yaw = this.person.yaw; this.person.stop(); } this.isScripted = on; }

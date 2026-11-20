@@ -81,8 +81,9 @@ class Game {
 
   // ---------------------------------------------------------- chapter flow
   abort() { this.token = null; for (const w of this.waiters) w.rej(CANCEL); this.waiters = []; this.ui.cancelDialog(); this.interaction = null; this.marker = null; this.compassTarget = null; this.ui.setBlind(0); this.ui.setCompass(null); this.ui.setHelm(null); if (this.ui.cardRes) this.ui.show('card', false); this.ui.cardRes = null; if (this.ui.mapRes) this.ui.mapRes(); }
+  // every chapter starts with Paul able to see (Chapter I blinds him at Acts 9:8 and may be left before he is healed)
   resetWorld(i) {
-    const ch = CHAPTERS[i]; this.engine.clearWorld(); this.npcs = []; this.beasts = []; this.letters = []; this.amb = {}; this.blindV = 0; this.spots = []; this.side = SIDE[i] || {}; this.chGreet = 0; this.chMarks = new Set(); this.chDeeds = new Set(); this.chRefs = []; this.greetI = i;
+    const ch = CHAPTERS[i]; this.engine.clearWorld(); this.npcs = []; this.beasts = []; this.letters = []; this.amb = {}; this.blindV = 0; this.blindTo = 0; this.ui.setBlind(0); this.spots = []; this.side = SIDE[i] || {}; this.chGreet = 0; this.chMarks = new Set(); this.chDeeds = new Set(); this.chRefs = []; this.greetI = i;
     const world = this.world = new World(this.engine, ch.seed || i + 1); this.engine.setEnv(ch.env()); this.player.rebuild(); this.player.setWorld(world); this.engine.waters.length = 0;
     this.api = this.makeApi(this.token); this.scene = ch.build(this.api, world) || {}; if (this.side.setup) this.side.setup(this.api, world); world.finish(); this.ui.buildMinimap(world); this.ch = ch; this.chIndex = i; return ch;
   }
